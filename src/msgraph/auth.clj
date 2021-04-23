@@ -1,5 +1,6 @@
 (ns msgraph.auth
   (:require [ring.adapter.jetty :as server]
+            [clojure.core.async :as async]
             [ring.util.response :as resp]
             [ring.util.codec :as codec]
             [clojure.string :as string])
@@ -7,6 +8,7 @@
 
 (def redirect-path "/token")
 (def auth-path "/auth")
+(def port 3000)
 
 (def local-hostname
   (.getHostName (InetAddress/getLocalHost)))
@@ -43,13 +45,13 @@
 
 (defn handler [clientid tenant scopes host f request]
   (case (:uri request)
-    "/test"
+    "/test" ; TODO: remove
     (resp/response "Testing endpoint")
 
-    "/auth"
+    "/auth" ; TODO: change to def above
     (resp/redirect (auth-url clientid tenant scopes host))
 
-    "/token"
+    "/token" ; TODO: change to def above
     (do
       (if-let [token (last (re-matches #".*code=([^&]+).*$"
                                        (:query-string request)))]
@@ -60,15 +62,28 @@
     ;; default
     (resp/response "Hit nothing")))
 
-(defn get-token [clientid tenant scopes keystore-pass f]
-  (server/run-jetty (partial handler
-                             clientid
-                             tenant
-                             scopes
-                             (format "%s:3000" local-hostname)
-                             f)
-                    {:port 3000
-                     :join? false
-                     :ssl? true
-                     :keystore "keystore.jks"
-                     :key-password keystore-pass}))
+(defn handle-channel [c]
+  (let [the-server (async/<! c)
+        token (async/<! c)]
+    (async/close! c)
+    token))
+
+(defn handle-token-response [channel token]
+  (println (format "Got token %s" token))
+  (async/>!! channel token))
+
+(defn get-token [clientid tenant scopes keystore-pass]
+  (let [c (async/chan)
+        s (server/run-jetty (partial handler
+                                     clientid
+                                     tenant
+                                     scopes
+                                     (format "%s:%d" local-hostname port)
+                                     (partial handle-token-response c))
+                            {:port port
+                             :join? false
+                             :ssl? true
+                             :keystore "keystore.jks"
+                             :key-password keystore-pass})]
+    (async/>!! c s)
+    (handle-channel c)))

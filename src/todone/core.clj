@@ -17,15 +17,13 @@
       (printf "Couldn't open '%s': %s\n" source (.getMessage e)))))
 
 (defn get-token []
-  (let [config (load-edn ".config.edn")]
-    (auth/get-token (:appid config)
-                    "consumers"
-                    ["offline_access"
-                     "user.read"]
-                    (:keystorepass config)
-                    #(let [s (format "Got token: %s" %)]
-                       (println s)
-                       s))))
+  (let [config (load-edn ".config.edn")
+        token (auth/get-token (:appid config)
+                              "consumers"
+                              ["offline_access"
+                               "user.read"]
+                              (:keystorepass config))]
+    token))
 
 
 (defn -main [& args]
