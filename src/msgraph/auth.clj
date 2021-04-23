@@ -63,14 +63,15 @@
     (resp/response "Hit nothing")))
 
 (defn handle-channel [c]
-  (let [the-server (async/<! c)
-        token (async/<! c)]
+  (let [the-server (async/<!! c)
+        token (async/<!! c)]
     (async/close! c)
+    (.stop the-server)
     token))
 
 (defn handle-token-response [channel token]
   (println (format "Got token %s" token))
-  (async/>!! channel token))
+  (async/go (async/>! channel token)))
 
 (defn get-token [clientid tenant scopes keystore-pass]
   (let [c (async/chan)
@@ -85,5 +86,5 @@
                              :ssl? true
                              :keystore "keystore.jks"
                              :key-password keystore-pass})]
-    (async/>!! c s)
+    (async/go (async/>! c s))
     (handle-channel c)))
