@@ -3,8 +3,16 @@
             [clojure.core.async :as async]
             [ring.util.response :as resp]
             [ring.util.codec :as codec]
+            [clj-http.client :as http]
+            [cheshire.core :as json]
             [clojure.string :as string])
   (:import (java.net InetAddress)))
+
+(defrecord Credentials [clientid
+                        tenant
+                        scopes
+                        token
+                        refresh-token])
 
 (def redirect-path "/token")
 (def auth-path "/auth")
@@ -24,7 +32,7 @@
           tenant))
 
 (defn query-string
-  [clientid scopes host]
+  [clientid scopes]
   (let [params {:response_mode "query"
                 :response_type "code"
                 :client_id clientid
@@ -38,18 +46,18 @@
                                 (codec/url-encode v)))
                       params))))
 
-(defn auth-url [clientid tenant scopes host]
+(defn auth-url [clientid tenant scopes]
   (format "%s?%s"
           (auth-endpoint tenant)
-          (query-string clientid scopes host)))
+          (query-string clientid scopes)))
 
-(defn handler [clientid tenant scopes host f request]
+(defn handler [clientid tenant scopes f request]
   (case (:uri request)
     "/test" ; TODO: remove
     (resp/response "Testing endpoint")
 
     "/auth" ; TODO: change to def above
-    (resp/redirect (auth-url clientid tenant scopes host))
+    (resp/redirect (auth-url clientid tenant scopes))
 
     "/token" ; TODO: change to def above
     (do
@@ -73,13 +81,28 @@
   (println (format "Got token %s" token))
   (async/go (async/>! channel token)))
 
-(defn get-token [clientid tenant scopes keystore-pass]
+(defn get-token-from-code [code tenant clientid scopes]
+  (let [url (format "https://login.microsoftonline.com/%s/oauth2/v2.0/token" tenant)
+        sanitized-scopes (filter #(not= "offline_access" %) scopes)
+        params {:client_id clientid
+                :scope (codec/url-encode
+                        (string/join " " sanitized-scopes))
+                :code code
+                :redirect_uri (redirect-url)
+                :grant_type "authorization_code"}
+        resp (http/post url
+                        {:accept :json
+                         :content-type :application/x-www-form-urlencoded
+                         :form-params params})
+        body (json/parse-string (:body resp))]
+    body))
+
+(defn get-code [clientid tenant scopes keystore-pass]
   (let [c (async/chan)
         s (server/run-jetty (partial handler
                                      clientid
                                      tenant
                                      scopes
-                                     (format "%s:%d" local-hostname port)
                                      (partial handle-token-response c))
                             {:port port
                              :join? false
@@ -87,4 +110,11 @@
                              :keystore "keystore.jks"
                              :key-password keystore-pass})]
     (async/go (async/>! c s))
-    (handle-channel c)))
+    (get-token-from-code (handle-channel c)
+                         tenant
+                         clientid
+                         scopes)))
+
+(defn get-token [clientid tenant scopes keystore-pass]
+  (let [code (get-code clientid tenant scopes keystore-pass)]
+    code))
