@@ -1,4 +1,4 @@
-(ns msgraph.auth
+(ns projuctivity.msgraph.auth
   (:require [ring.adapter.jetty :as server]
             [clojure.core.async :as async]
             [ring.util.response :as resp]
@@ -8,12 +8,6 @@
             [clojure.string :as string])
   (:import (java.net InetAddress)))
 
-(defrecord Credentials [clientid
-                        tenant
-                        scopes
-                        token
-                        refresh-token])
-
 (def redirect-path "/token")
 (def auth-path "/auth")
 (def port 3000)
@@ -21,12 +15,12 @@
 (def local-hostname
   (.getHostName (InetAddress/getLocalHost)))
 
-(defn redirect-url
-  []
-  (let [hostname (.getHostName (InetAddress/getLocalHost))]
-    (format "https://%s%s" hostname redirect-path)))
+(def base-url (format "https://%s" local-hostname port))
 
-(defn auth-endpoint
+(def redirect-url (format "%s%s" base-url redirect-path))
+(def auth-url (format "%s%s" base-url auth-path))
+
+(defn ms-auth-endpoint
   [tenant]
   (format "https://login.microsoftonline.com/%s/oauth2/v2.0/authorize"
           tenant))
@@ -36,7 +30,7 @@
   (let [params {:response_mode "query"
                 :response_type "code"
                 :client_id clientid
-                :redirect_uri (redirect-url)
+                :redirect_uri redirect-url
                 :scope (string/join " "
                                     (map name scopes))}]
     (string/join "&"
@@ -46,29 +40,21 @@
                                 (codec/url-encode v)))
                       params))))
 
-(defn auth-url [clientid tenant scopes]
+(defn ms-auth-url [clientid tenant scopes]
   (format "%s?%s"
-          (auth-endpoint tenant)
+          (ms-auth-endpoint tenant)
           (query-string clientid scopes)))
 
 (defn handler [clientid tenant scopes f request]
   (case (:uri request)
-    "/test" ; TODO: remove
-    (resp/response "Testing endpoint")
-
-    "/auth" ; TODO: change to def above
-    (resp/redirect (auth-url clientid tenant scopes))
-
     "/token" ; TODO: change to def above
-    (do
-      (if-let [token (last (re-matches #".*code=([^&]+).*$"
-                                       (:query-string request)))]
-        (f token)
-        (println "Could not get token"))
-      (resp/response (format "Got it")))
+    (if-let [token (last (re-matches #".*code=([^&]+).*$"
+                                     (get request :query-string "")))]
+      (f token)
+      (resp/response "Could not get code. This endpoint should only be redirected-to by MS. Use /auth to get started."))
 
     ;; default
-    (resp/response "Hit nothing")))
+    (resp/redirect (ms-auth-url clientid tenant scopes))))
 
 (defn handle-channel [c]
   (let [the-server (async/<!! c)
@@ -78,26 +64,28 @@
     token))
 
 (defn handle-token-response [channel token]
-  (println (format "Got token %s" token))
   (async/go (async/>! channel token)))
 
-(defn get-token-from-code [code tenant clientid scopes]
+(defn get-tokens-from-code [code tenant clientid scopes]
   (let [url (format "https://login.microsoftonline.com/%s/oauth2/v2.0/token" tenant)
-        sanitized-scopes (filter #(not= "offline_access" %) scopes)
         params {:client_id clientid
-                :scope (codec/url-encode
-                        (string/join " " sanitized-scopes))
+                :scope (string/join " "
+                                    (filter (partial not= "offline_access")
+                                            (map string/lower-case
+                                                 scopes)))
                 :code code
-                :redirect_uri (redirect-url)
+                :redirect_uri redirect-url
                 :grant_type "authorization_code"}
         resp (http/post url
                         {:accept :json
                          :content-type :application/x-www-form-urlencoded
                          :form-params params})
         body (json/parse-string (:body resp))]
-    body))
+    {:token (get body "access_token")
+     :refresh-token (get body "refresh_token")}))
 
 (defn get-code [clientid tenant scopes keystore-pass]
+  (println (format "Running server to request credentials. Please head over to %s" auth-url))
   (let [c (async/chan)
         s (server/run-jetty (partial handler
                                      clientid
@@ -110,11 +98,14 @@
                              :keystore "keystore.jks"
                              :key-password keystore-pass})]
     (async/go (async/>! c s))
-    (get-token-from-code (handle-channel c)
-                         tenant
-                         clientid
-                         scopes)))
+    (handle-channel c)))
 
-(defn get-token [clientid tenant scopes keystore-pass]
-  (let [code (get-code clientid tenant scopes keystore-pass)]
-    code))
+(defn get-tokens [config]
+  (let [{:keys [clientid tenant scopes keystorepass]} config
+        all-scopes (conj scopes "offline_access")
+        code (get-code clientid tenant all-scopes keystorepass)]
+    (println "got code" code)
+    (get-tokens-from-code code
+                          tenant
+                          clientid
+                          all-scopes)))
