@@ -95,14 +95,24 @@
                             clientid
                             all-scopes))))
 
-(defn refresh-token [config refresh-token]
-  (let [{:keys [clientid tenant scopes]} config]
-    (with-saved tokens-filename
-      (let [tokens (get-tokens-from-refresh-token refresh-token
-                                                  tenant
-                                                  clientid
-                                                  scopes)]
-        (if (nil? (:refresh-token tokens))
-          (assoc tokens :refresh-token refresh-token)
-          tokens)))))
+(defn refresh-token
+  ([config refresh-token]
+   (let [{:keys [clientid tenant scopes]} config]
+     (with-saved tokens-filename
+       (let [tokens (get-tokens-from-refresh-token refresh-token
+                                                   tenant
+                                                   clientid
+                                                   scopes)]
+         (if (nil? (:refresh-token tokens))
+           (assoc tokens :refresh-token refresh-token)
+           tokens)))))
+  ([config]
+   (refresh-token config
+                  (:refresh-token (from-saved tokens-filename)))))
+
+(defn token [config]
+  (:token
+   (if (.exists (io/file tokens-filename))
+     (from-saved tokens-filename)
+     (get-tokens config))))
 
