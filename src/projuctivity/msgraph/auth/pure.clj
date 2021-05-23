@@ -43,16 +43,23 @@
           (query-string clientid scopes)))
 
 
-(defn token-request-params [code tenant clientid scopes]
-  {:url (format "https://login.microsoftonline.com/%s/oauth2/v2.0/token" tenant)
-   :params {:client_id clientid
-            :scope (string/join " "
-                                (filter (partial not= "offline_access")
-                                        (map string/lower-case
-                                             scopes)))
-            :code code
-            :redirect_uri redirect-url
-            :grant_type "authorization_code"}})
+(defn token-request-params [code tenant clientid scopes refresh?]
+  (let [url (format "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+                    tenant)
+        scope (string/join " "
+                           (filter (partial not= "offline_access")
+                                   (map string/lower-case
+                                        scopes)))
+        base-params {:client_id clientid
+                     :scope scope
+                     :redirect_uri redirect-url}]
+    {:url url
+     :params (merge base-params
+                    (if refresh?
+                      {:grant_type "refresh_token"
+                       :refresh_token code}
+                      {:grant_type "authorization_code"
+                       :code code}))}))
 
 (defn tokens-from-token-response [resp]
   (let [body (json/parse-string (:body resp))]
