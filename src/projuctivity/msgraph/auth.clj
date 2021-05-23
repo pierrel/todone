@@ -2,9 +2,25 @@
   "High-level workflows that use pure functions in auth.pure."
   (:use [projuctivity.msgraph.auth.pure])
   (:require [ring.adapter.jetty :as server]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.core.async :as async]
             [ring.util.response :as resp]
             [clj-http.client :as http]))
+
+(def tokens-filename ".msgraph-tokens.edn")
+
+(defn- with-saved
+  "Saves the content to the temp file and returns the content."
+  [filename content]
+  (let [formatted (with-out-str (pr content))]
+    (spit filename formatted))
+  content)
+
+(defn- from-saved [filename]
+  (try
+    (with-open [r (io/reader filename)]
+      (edn/read (java.io.PushbackReader. r)))))
 
 (defn- code-from-channel
   "Waits for the code to be passed to the channel.
@@ -33,7 +49,20 @@
   (let [{:keys [url params]} (token-request-params code
                                                    tenant
                                                    clientid
-                                                   scopes)]
+                                                   scopes
+                                                   false)]
+    (tokens-from-token-response
+     (http/post url
+                {:accept :json
+                 :content-type :application/x-www-form-urlencoded
+                 :form-params params}))))
+
+(defn get-tokens-from-refresh-token [refresh-token tenant clientid scopes]
+  (let [{:keys [url params]} (token-request-params refresh-token
+                                                   tenant
+                                                   clientid
+                                                   scopes
+                                                   true)]
     (tokens-from-token-response
      (http/post url
                 {:accept :json
@@ -60,7 +89,20 @@
         all-scopes (conj scopes "offline_access")
         code (get-code clientid tenant all-scopes keystorepass)]
     (println "got code" code)
-    (get-tokens-from-code code
-                          tenant
-                          clientid
-                          all-scopes)))
+    (with-saved tokens-filename
+      (get-tokens-from-code code
+                            tenant
+                            clientid
+                            all-scopes))))
+
+(defn refresh-token [config refresh-token]
+  (let [{:keys [clientid tenant scopes]} config]
+    (with-saved tokens-filename
+      (let [tokens (get-tokens-from-refresh-token refresh-token
+                                                  tenant
+                                                  clientid
+                                                  scopes)]
+        (if (nil? (:refresh-token tokens))
+          (assoc tokens :refresh-token refresh-token)
+          tokens)))))
+
