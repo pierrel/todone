@@ -1,18 +1,14 @@
 (ns projuctivity.msgraph.core
   (:require [clj-http.client :as http]
             [cheshire.core :as json]
+            [projuctivity.msgraph.utils :as utils]
             [projuctivity.msgraph.auth :as auth]))
-
-(defn load-edn
-  "Load edn from an io/reader source (filename or io/resource)."
-  [source]
-  (read-string (slurp source)))
 
 (def scopes ["user.read"
              "Tasks.ReadWrite"
              "Calendars.ReadWrite"])
 
-(def config (assoc (load-edn ".config.edn")
+(def config (assoc (utils/load-edn ".config.edn")
                    :scopes scopes))
 
 (def base-url "https://graph.microsoft.com/")

@@ -2,6 +2,7 @@
   "High-level workflows that use pure functions in auth.pure."
   (:use [projuctivity.msgraph.auth.pure])
   (:require [ring.adapter.jetty :as server]
+            [projuctivity.msgraph.utils :as utils]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.core.async :as async]
@@ -13,14 +14,8 @@
 (defn- with-saved
   "Saves the content to the temp file and returns the content."
   [filename content]
-  (let [formatted (with-out-str (pr content))]
-    (spit filename formatted))
+  (utils/save-edn filename content)
   content)
-
-(defn- from-saved [filename]
-  (try
-    (with-open [r (io/reader filename)]
-      (edn/read (java.io.PushbackReader. r)))))
 
 (defn- code-from-channel
   "Waits for the code to be passed to the channel.
@@ -108,11 +103,11 @@
            tokens)))))
   ([config]
    (refresh-token config
-                  (:refresh-token (from-saved tokens-filename)))))
+                  (:refresh-token (utils/load-edn tokens-filename)))))
 
 (defn token [config]
   (:token
    (if (.exists (io/file tokens-filename))
-     (from-saved tokens-filename)
+     (utils/load-edn tokens-filename)
      (get-tokens config))))
 
