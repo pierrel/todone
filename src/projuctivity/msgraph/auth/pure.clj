@@ -14,7 +14,8 @@
 (s/def :auth/config (s/keys :req [:auth/clientid
                                   :auth/tenant
                                   :auth/keystorepass
-                                  :auth/ssl_keystore]))
+                                  :auth/ssl_keystore
+                                  :auth/scopes]))
 
 (def redirect-path "/token")
 (def auth-path "/auth")

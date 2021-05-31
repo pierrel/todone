@@ -11,9 +11,9 @@
 
 (def config (s/conform :auth/config
                        (assoc (utils/load-edn ".config.edn")
-                              :scopes scopes)))
+                              :auth/scopes scopes)))
 
-(def base-url "https://graph.microsoft.com/")
+(def base-url "https://graph.microsoft.com")
 
 (s/def :msgraph/body (s/with-gen
                        (s/and string?

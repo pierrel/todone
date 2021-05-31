@@ -72,7 +72,7 @@
                  :content-type :application/x-www-form-urlencoded
                  :form-params params}))))
 
-(s/fdef get-tokens-from-code
+(s/fdef get-tokens-from-refresh-token
   :args (s/cat :refresh-token string?
                :tenant string?
                :clientid string?
@@ -114,7 +114,7 @@
   :args (s/cat :config (s/spec :auth/config))
   :ret (s/spec :auth/tokens))
 (defn get-tokens [config]
-  (let [{:keys [clientid tenant scopes keystorepass]} config
+  (let [{:auth/keys [clientid tenant scopes keystorepass]} config
         all-scopes (conj scopes "offline_access")
         code (get-code clientid tenant all-scopes keystorepass)]
     (println "got code" code)
@@ -129,7 +129,7 @@
   :ret (s/spec :auth/tokens))
 (defn refresh-token
   ([config refresh-token]
-   (let [{:keys [clientid tenant scopes]} config]
+   (let [{:auth/keys [clientid tenant scopes]} config]
      (with-saved tokens-filename
        (let [tokens (get-tokens-from-refresh-token refresh-token
                                                    tenant
