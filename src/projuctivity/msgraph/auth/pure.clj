@@ -2,8 +2,19 @@
   "Pure functions to handle authentication."
   (:require [ring.util.codec :as codec]
             [clojure.string :as string]
+            [clojure.spec.alpha :as s]
             [cheshire.core :as json])
   (:import (java.net InetAddress)))
+
+(s/def :auth/clientid string?)
+(s/def :auth/tenant string?)
+(s/def :auth/keystorepass string?)
+(s/def :auth/ssl_keystore string?)
+(s/def :auth/scopes (s/coll-of string?))
+(s/def :auth/config (s/keys :req [:auth/clientid
+                                  :auth/tenant
+                                  :auth/keystorepass
+                                  :auth/ssl_keystore]))
 
 (def redirect-path "/token")
 (def auth-path "/auth")
@@ -17,11 +28,17 @@
 (def redirect-url (format "%s%s" base-url redirect-path))
 (def auth-url (format "%s%s" base-url auth-path))
 
+(s/fdef ms-auth-endpoint
+  :args (s/cat :tenant string?)
+  :ret string?)
 (defn ms-auth-endpoint
   [tenant]
   (format "https://login.microsoftonline.com/%s/oauth2/v2.0/authorize"
           tenant))
 
+(s/fdef query-string
+  :args (s/cat :clientid string? :scopes (s/spec :auth/scopes))
+  :ret string?)
 (defn query-string
   [clientid scopes]
   (let [params {:response_mode "query"
@@ -37,11 +54,15 @@
                                 (codec/url-encode v)))
                       params))))
 
+(s/fdef ms-auth-url
+  :args (s/cat :clientid string?
+               :tenant string?
+               :scopes (s/spec :auth/scopes))
+  :ret string?)
 (defn ms-auth-url [clientid tenant scopes]
   (format "%s?%s"
           (ms-auth-endpoint tenant)
           (query-string clientid scopes)))
-
 
 (defn token-request-params [code tenant clientid scopes refresh?]
   (let [url (format "https://login.microsoftonline.com/%s/oauth2/v2.0/token"

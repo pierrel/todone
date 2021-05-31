@@ -7,7 +7,13 @@
             [clojure.java.io :as io]
             [clojure.core.async :as async]
             [ring.util.response :as resp]
-            [clj-http.client :as http]))
+            [clj-http.client :as http]
+            [clojure.spec.alpha :as s]
+            [projuctivity.msgraph.auth :as auth]))
+
+(s/def :auth/token string?)
+(s/def :auth/refresh-token string?)
+(s/def :auth/tokens (s/keys :req-un [:auth/token :auth/refresh-token]))
 
 (def tokens-filename ".msgraph-tokens.edn")
 
@@ -17,6 +23,14 @@
   (utils/save-edn filename content)
   content)
 
+(s/fdef code-from-channel
+  :args (s/cat :channel (s/and (partial instance?
+                                        clojure.core.async.impl.protocols/Channel)
+                               (partial instance?
+                                        clojure.core.async.impl.protocols/ReadPort))
+               :server (partial instance?
+                                org.eclipse.jetty.util.component.LifeCycle))
+  :ret string?)
 (defn- code-from-channel
   "Waits for the code to be passed to the channel.
   Closes the channel, stops the server and returns the code."
@@ -40,6 +54,12 @@
     ;; default
     (resp/redirect (ms-auth-url clientid tenant scopes))))
 
+(s/fdef get-tokens-from-code
+  :args (s/cat :code string?
+               :tenant string?
+               :clientid string?
+               :scopes (s/spec :auth/scopes))
+  :ret (s/spec :auth/tokens))
 (defn get-tokens-from-code [code tenant clientid scopes]
   (let [{:keys [url params]} (token-request-params code
                                                    tenant
@@ -52,6 +72,12 @@
                  :content-type :application/x-www-form-urlencoded
                  :form-params params}))))
 
+(s/fdef get-tokens-from-code
+  :args (s/cat :refresh-token string?
+               :tenant string?
+               :clientid string?
+               :scopes (s/spec :auth/scopes))
+  :ret (s/spec :auth/tokens))
 (defn get-tokens-from-refresh-token [refresh-token tenant clientid scopes]
   (let [{:keys [url params]} (token-request-params refresh-token
                                                    tenant
@@ -63,7 +89,12 @@
                 {:accept :json
                  :content-type :application/x-www-form-urlencoded
                  :form-params params}))))
-
+(s/fdef get-code
+  :args (s/cat :clientid string?
+               :tenant string?
+               :scopes (s/spec :auth/scopes)
+               :keystore-pass string?)
+  :ret string?)
 (defn get-code [clientid tenant scopes keystore-pass]
   (println (format "Running server to request credentials. Please head over to %s" auth-url))
   (let [c (async/chan)
@@ -79,6 +110,9 @@
                              :key-password keystore-pass})]
     (code-from-channel c s)))
 
+(s/fdef get-tokens
+  :args (s/cat :config (s/spec :auth/config))
+  :ret (s/spec :auth/tokens))
 (defn get-tokens [config]
   (let [{:keys [clientid tenant scopes keystorepass]} config
         all-scopes (conj scopes "offline_access")
@@ -89,7 +123,10 @@
                             tenant
                             clientid
                             all-scopes))))
-
+(s/fdef refresh-token
+  :args (s/cat :config (s/spec :auth/config)
+               :refresh-token (s/spec :auth/refresh-token))
+  :ret (s/spec :auth/tokens))
 (defn refresh-token
   ([config refresh-token]
    (let [{:keys [clientid tenant scopes]} config]
@@ -105,6 +142,9 @@
    (refresh-token config
                   (:refresh-token (utils/load-edn tokens-filename)))))
 
+(s/fdef token
+  :args (s/cat :config (s/spec :auth/config))
+  :ret (s/spec :auth/token))
 (defn token [config]
   (:token
    (if (.exists (io/file tokens-filename))
