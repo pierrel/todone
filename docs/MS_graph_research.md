@@ -173,3 +173,9 @@ Body:
     }
 }
 ```
+
+## Links
+* [Explorer](https://developer.microsoft.com/en-us/graph/graph-explorer)
+* [Authentication](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow)
+* [Todo list API](https://docs.microsoft.com/en-us/graph/api/todotasklist-list-tasks?view=graph-rest-1.0&tabs=http)
+* 

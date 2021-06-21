@@ -49,6 +49,7 @@
     (if-let [code (last (re-matches #".*code=([^&]+).*$"
                                     (get request :query-string "")))]
       (f code)
+      ;; TODO: implement error recovery: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow#error-response
       (resp/response "Could not get code. This endpoint should only be redirected-to by MS. Use /auth to get started."))
 
     ;; default
