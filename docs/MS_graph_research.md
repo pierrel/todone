@@ -27,6 +27,8 @@ Properties
 ### Todo list
 Permissions: Tasks.ReadWrite
 #### Todo see lists
+THIS HAS NOT BEEN WORKING: https://docs.microsoft.com/en-us/answers/questions/462011/get-task-lists-results-in-500-from-graph-explorer.html
+
 GET https://graph.microsoft.com/v1.0/me/todo/lists
 Response:
 ```
