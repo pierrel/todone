@@ -1,7 +1,9 @@
 (ns projuctivity.msgraph.core
+  (:use [projuctivity.msgraph.pure])
   (:require [clj-http.client :as http]
             [cheshire.core :as json]
             [clojure.spec.alpha :as s]
+            [java-time :as t]
             [projuctivity.msgraph.utils :as utils]
             [projuctivity.msgraph.auth :as auth]))
 
@@ -39,6 +41,7 @@
                :token string?)
   :ret map?)
 (defn get-resource
+  "Sends a GET request to the desired resource with parameters and token."
   ([resource params token]
    (try
      (let [url (format "%s/v1.0/%s" base-url resource)
@@ -54,4 +57,27 @@
          (throw e)))))
   ([resource params]
    (let [token (auth/token config)]
-     (get-resource resource params token))))
+     (get-resource resource params token)))
+  ([resource]
+   (get-resource resource {})))
+
+(defn events-raw
+  "Returns events between now and `d` days."
+  [d]
+  (let [now (t/instant)
+        other (t/plus now (t/days d))
+        resp (get-resource "me/calendarview"
+                           (zipmap ["startdatetime"
+                                    "enddatetime"]
+                                   (sort t/before? [now other])))]
+    (get resp "value")))
+
+(defn past-events
+  "Gets events between now and 90 days ago."
+  []
+  (map to-event (events-raw -90)))
+
+(defn future-events
+  "Gets events between now and 90 days from now."
+  []
+  (map to-event (events-raw 90)))
