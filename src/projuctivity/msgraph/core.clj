@@ -7,14 +7,6 @@
             [projuctivity.msgraph.utils :as utils]
             [projuctivity.msgraph.auth :as auth]))
 
-(def scopes ["user.read"
-             "Tasks.ReadWrite"
-             "Calendars.ReadWrite"])
-
-(def config (s/conform :auth/config
-                       (assoc (utils/load-edn ".config.edn")
-                              :auth/scopes scopes)))
-
 (def base-url "https://graph.microsoft.com")
 
 (s/def :msgraph/body (s/with-gen
@@ -36,13 +28,19 @@
 (def httpget http/get)
 
 (s/fdef get-resource
-  :args (s/cat :resource string?
-               :params map?
-               :token string?)
+  :args (s/alt :binary (s/cat :config :projuctivity.msgraph.api/config
+                              :resource string?)
+               :trinary (s/cat :config :projuctivity.msgraph.api/config
+                               :resource string?
+                               :params map?)
+               :quaternary (s/cat :config :projuctivity.msgraph.api/config
+                                  :resource string?
+                                  :params map?
+                                  :token string?))
   :ret map?)
 (defn get-resource
   "Sends a GET request to the desired resource with parameters and token."
-  ([resource params token]
+  ([config resource params token]
    (try
      (let [url (format "%s/v1.0/%s" base-url resource)
            params {:headers {:authorization (format "Bearer %s" token)}
@@ -55,29 +53,24 @@
            (auth/refresh-token config)
            (get-resource resource params))
          (throw e)))))
-  ([resource params]
+  ([config resource params]
    (let [token (auth/token config)]
-     (get-resource resource params token)))
-  ([resource]
-   (get-resource resource {})))
+     (get-resource config resource params token)))
+  ([config resource]
+   (get-resource config resource {})))
 
-(defn events-raw
-  "Returns events between now and `d` days."
-  [d]
-  (let [now (t/instant)
-        other (t/plus now (t/days d))
-        resp (get-resource "me/calendarview"
+(defn- events-between-raw
+  [config d1 d2]
+  (let [resp (get-resource config
+                           "me/calendarview"
                            (zipmap ["startdatetime"
                                     "enddatetime"]
-                                   (sort t/before? [now other])))]
+                                   (map str
+                                        (sort t/before? [d1 d2]))))]
     (get resp "value")))
 
-(defn past-events
-  "Gets events between now and 90 days ago."
-  []
-  (map to-event (events-raw -90)))
+(defn events-between
+  "Returns events between d1 and d2. Does not handle paging."
+  [config d1 d2]
+  (map to-event (events-between-raw config d1 d2)))
 
-(defn future-events
-  "Gets events between now and 90 days from now."
-  []
-  (map to-event (events-raw 90)))

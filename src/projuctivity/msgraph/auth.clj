@@ -130,7 +130,7 @@
   :ret (s/spec :auth/tokens))
 (defn refresh-token
   ([config refresh-token]
-   (let [{:auth/keys [clientid tenant scopes]} config]
+   (let [{:keys [clientid tenant scopes]} config]
      (with-saved tokens-filename
        (let [tokens (get-tokens-from-refresh-token refresh-token
                                                    tenant
