@@ -4,10 +4,9 @@
             [clojure.spec.test.alpha :as spectest]
             [clojure.test :as t]))
 
-(t/deftest spec-checks
-  (spectest/instrument `sut/httpget {:stub #{`sut/httpget}})
-  (spectest/instrument `sut/get-resource)
+(spectest/instrument `sut/httpget {:stub #{`sut/httpget}})
 
+(t/deftest spec-checks
   (let [results (spectest/summarize-results
-                 (spectest/check `sut/get-resource
-                                 `sut/httpget))]))
+                 (spectest/check 'sut/get-resource
+                                 'sut/httpget))]))

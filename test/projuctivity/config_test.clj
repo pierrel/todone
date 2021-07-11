@@ -10,8 +10,6 @@
                    'sut/calendar-config
                    'sut/tasks-config])
 
-(spectest/instrument instrumented)
-
 (def example-config
   {:msgraph {:clientid "comething"
              :tenant "consumers"
