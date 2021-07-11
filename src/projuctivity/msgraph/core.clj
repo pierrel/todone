@@ -9,6 +9,9 @@
 
 (def base-url "https://graph.microsoft.com")
 
+(defn contains-base? [url]
+  (re-matches #"^https.*" url))
+
 (s/def :msgraph/body (s/with-gen
                        (s/and string?
                               #(try
@@ -42,7 +45,9 @@
   "Sends a GET request to the desired resource with parameters and token."
   ([config resource params token]
    (try
-     (let [url (format "%s/v1.0/%s" base-url resource)
+     (let [url (if (contains-base? resource)
+                 resource
+                 (format "%s/v1.0/%s" base-url resource))
            params {:headers {:authorization (format "Bearer %s" token)}
                    :query-params params}
            resp (httpget url params)]
@@ -60,17 +65,29 @@
    (get-resource config resource {})))
 
 (defn- events-between-raw
-  [config d1 d2]
-  (let [resp (get-resource config
-                           "me/calendarview"
-                           (zipmap ["startdatetime"
-                                    "enddatetime"]
-                                   (map str
-                                        (sort t/before? [d1 d2]))))]
-    (get resp "value")))
+  "Pages through events and returns a lazy sequence of raw event json."
+  ([config d1 d2]
+   (let [resp (get-resource config
+                            "me/calendarview"
+                            (zipmap ["startdatetime"
+                                     "enddatetime"]
+                                    (map str
+                                         (sort t/before? [d1 d2]))))
+         values (get resp "value")
+         thenext (get resp "@odata.nextLink")]
+     (lazy-seq (concat values
+                       (events-between-raw config thenext)))))
+  ([config nextlink]
+   (if nextlink
+     (let [resp (get-resource config
+                              nextlink)
+           values (get resp "value")
+           thenext (get resp "@odata.nextLink")]
+       (lazy-seq (concat values
+                         (events-between-raw config thenext)))))))
 
 (defn events-between
-  "Returns events between d1 and d2. Does not handle paging."
+  "Lazy seq of `Event`s between d1 and d2."
   [config d1 d2]
   (map to-event (events-between-raw config d1 d2)))
 
