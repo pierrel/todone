@@ -11,11 +11,11 @@
 (s/def :auth/keystorepass string?)
 (s/def :auth/ssl_keystore string?)
 (s/def :auth/scopes (s/coll-of string?))
-(s/def :auth/config (s/keys :req [:auth/clientid
-                                  :auth/tenant
-                                  :auth/keystorepass
-                                  :auth/ssl_keystore
-                                  :auth/scopes]))
+(s/def :auth/config (s/keys :req-un [:auth/clientid
+                                     :auth/tenant
+                                     :auth/keystorepass
+                                     :auth/ssl_keystore
+                                     :auth/scopes]))
 
 (def redirect-path "/token")
 (def auth-path "/auth")
