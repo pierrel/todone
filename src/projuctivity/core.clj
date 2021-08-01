@@ -2,22 +2,22 @@
   (:use [projuctivity.models])
   (:require [projuctivity.msgraph.api :as ms]
             [projuctivity.api :as api]
-            [projuctivity.config :as config]
-            [java-time :as t]))
+            [projuctivity.config :as config]))
 
 (def calendar-user (atom nil))
 (def tasks-user (atom nil))
 
 (defn assign-users!
   "Assigns users based on the config."
-  []
-  (let [server-config (config/server-config)]
-    (doseq [[user config-fn] [[calendar-user config/calendar-config]
-                              [tasks-user config/tasks-config]]]
-      (let [[service user-config] (config-fn)]
-        (case service
-          :msgraph (reset! user (ms/user (merge user-config
-                                                server-config))))))))
+  ([configuration]
+   (let [server-config (config/server-config configuration)]
+     (doseq [[user [service user-config]] [[calendar-user (config/calendar-config configuration)]
+                                           [tasks-user (config/tasks-config configuration)]]]
+       (case service
+         :msgraph (reset! user (ms/user (merge user-config
+                                               server-config)))))))
+  ([]
+   (assign-users! config/config)))
 
 (defn check-and-assign!
   "Assigns users if they have not already been assigned."
