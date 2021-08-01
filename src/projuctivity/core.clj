@@ -26,6 +26,10 @@
                   @tasks-user])
     (assign-users!)))
 
+(defn auth []
+  (check-and-assign!)
+  (api/auth @calendar-user))
+
 (defn events
   "Returns a lazy list of `Event`s between date1 and date2"
   [date1 date2]

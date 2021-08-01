@@ -30,6 +30,9 @@
   :ret (s/spec :msgraph/response))
 (def httpget http/get)
 
+(defn auth [config]
+  (auth/refresh-token config))
+
 (s/fdef get-resource
   :args (s/alt :binary (s/cat :config :projuctivity.msgraph.api/config
                               :resource string?)
