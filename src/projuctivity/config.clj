@@ -8,7 +8,7 @@
   (s/alt :nullary (s/cat)
          :unary (s/cat :config :projuctivity.config/config)))
 
-(def filename ".configv2.edn")
+(def filename ".config.edn")
 
 (defn load-edn
   "Load edn from an io/reader source (filename or io/resource).
