@@ -1,30 +1,28 @@
-(ns projuctivity.msgraph.auth.pure
-  "Pure functions to handle authentication."
+(ns projuctivity.msgraph.auth.urls
+  "URLs related to authentication"
   (:require [ring.util.codec :as codec]
             [clojure.string :as string]
             [clojure.spec.alpha :as s]
             [cheshire.core :as json])
   (:import (java.net InetAddress)))
 
-(s/def :auth/clientid string?)
-(s/def :auth/tenant string?)
-(s/def :auth/keystorepass string?)
-(s/def :auth/ssl_keystore string?)
 (s/def :auth/scopes (s/coll-of string?))
-(s/def :auth/config (s/keys :req-un [:auth/clientid
-                                     :auth/tenant
-                                     :auth/keystorepass
-                                     :auth/ssl_keystore
-                                     :auth/scopes]))
 
 (def redirect-path "/token")
 (def auth-path "/auth")
 (def port 3000)
 
-(def local-hostname
-  (.getHostName (InetAddress/getLocalHost)))
+(defn is-codespaces? [hostname]
+  (-> (re-matches #"^codespaces.*" hostname) nil? not))
 
-(def base-url (format "https://%s" local-hostname port))
+(def on-device-hostname (.getHostName (InetAddress/getLocalHost)))
+
+(def local-hostname
+  (if (re-matches #"^codespaces.*" on-device-hostname)
+    "localhost"
+    on-device-hostname))
+
+(def base-url (format "https://%s:%s" local-hostname (str port)))
 
 (def redirect-url (format "%s%s" base-url redirect-path))
 (def auth-url (format "%s%s" base-url auth-path))

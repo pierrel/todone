@@ -1,11 +1,10 @@
 (ns projuctivity.msgraph.core
-  (:use [projuctivity.msgraph.pure])
   (:require [clj-http.client :as http]
             [cheshire.core :as json]
             [clojure.spec.alpha :as s]
             [java-time :as t]
-            [projuctivity.msgraph.utils :as utils]
-            [projuctivity.msgraph.auth :as auth]))
+            [projuctivity.msgraph.auth :as auth]
+            [projuctivity.msgraph.pure :as pure]))
 
 (def base-url "https://graph.microsoft.com")
 
@@ -92,5 +91,5 @@
 (defn events-between
   "Lazy seq of `Event`s between d1 and d2."
   [config d1 d2]
-  (map to-event (events-between-raw config d1 d2)))
+  (map pure/to-event (events-between-raw config d1 d2)))
 

@@ -1,15 +1,23 @@
 (ns projuctivity.msgraph.auth
-  "High-level workflows that use pure functions in auth.pure."
-  (:use [projuctivity.msgraph.auth.pure])
+  "Auth workflows."
   (:require [ring.adapter.jetty :as server]
             [projuctivity.msgraph.utils :as utils]
-            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.core.async :as async]
             [ring.util.response :as resp]
             [clj-http.client :as http]
             [clojure.spec.alpha :as s]
-            [projuctivity.msgraph.auth :as auth]))
+            [projuctivity.msgraph.auth.urls :as urls]))
+
+(s/def :auth/clientid string?)
+(s/def :auth/tenant string?)
+(s/def :auth/keystorepass string?)
+(s/def :auth/ssl_keystore string?)
+(s/def :auth/config (s/keys :req-un [:auth/clientid
+                                     :auth/tenant
+                                     :auth/keystorepass
+                                     :auth/ssl_keystore
+                                     :auth/scopes]))
 
 (s/def :auth/token string?)
 (s/def :auth/refresh-token string?)
@@ -17,12 +25,29 @@
 
 (def tokens-filename ".msgraph-tokens.edn")
 
+;; This is set whenever the server is started.
+;; Mostly for debug purposes.
+(def server-debug (atom nil))
+
+(def on-codespaces?
+  (urls/is-codespaces? urls/on-device-hostname))
+
 (defn- with-saved
   "Saves the content to the temp file and returns the content."
   [filename content]
   (utils/save-edn filename content)
   content)
 
+(defn jetty-opts [keystore-pass]
+  (let [init {:port urls/port
+              :join? false}]
+    (if on-codespaces?
+      init
+      (merge init
+             {:ssl? true
+              :keystore "keystore.jks"
+              :key-password keystore-pass}))))
+ 
 (s/fdef code-from-channel
   :args (s/cat :channel (s/and (partial instance?
                                         clojure.core.async.impl.protocols/Channel)
@@ -52,8 +77,11 @@
       ;; TODO: implement error recovery: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow#error-response
       (resp/response "Could not get code. This endpoint should only be redirected-to by MS. Use /auth to get started."))
 
+    "/testing"
+    (resp/response "This is just a test")
+    
     ;; default
-    (resp/redirect (ms-auth-url clientid tenant scopes))))
+    (resp/redirect (urls/ms-auth-url clientid tenant scopes))))
 
 (s/fdef get-tokens-from-code
   :args (s/cat :code string?
@@ -62,12 +90,12 @@
                :scopes (s/spec :auth/scopes))
   :ret (s/spec :auth/tokens))
 (defn get-tokens-from-code [code tenant clientid scopes]
-  (let [{:keys [url params]} (token-request-params code
-                                                   tenant
-                                                   clientid
-                                                   scopes
-                                                   false)]
-    (tokens-from-token-response
+  (let [{:keys [url params]} (urls/token-request-params code
+                                                        tenant
+                                                        clientid
+                                                        scopes
+                                                        false)]
+    (urls/tokens-from-token-response
      (http/post url
                 {:accept :json
                  :content-type :application/x-www-form-urlencoded
@@ -80,12 +108,12 @@
                :scopes (s/spec :auth/scopes))
   :ret (s/spec :auth/tokens))
 (defn get-tokens-from-refresh-token [refresh-token tenant clientid scopes]
-  (let [{:keys [url params]} (token-request-params refresh-token
-                                                   tenant
-                                                   clientid
-                                                   scopes
-                                                   true)]
-    (tokens-from-token-response
+  (let [{:keys [url params]} (urls/token-request-params refresh-token
+                                                        tenant
+                                                        clientid
+                                                        scopes
+                                                        true)]
+    (urls/tokens-from-token-response
      (http/post url
                 {:accept :json
                  :content-type :application/x-www-form-urlencoded
@@ -97,18 +125,15 @@
                :keystore-pass string?)
   :ret string?)
 (defn get-code [clientid tenant scopes keystore-pass]
-  (println (format "Running server to request credentials. Please head over to %s" auth-url))
+  (println (format "Running server to request credentials. Please head over to %s" urls/auth-url))
   (let [c (async/chan)
         s (server/run-jetty (partial handler
                                      clientid
                                      tenant
                                      scopes
                                      (partial carry-code c))
-                            {:port port
-                             :join? false
-                             :ssl? true
-                             :keystore "keystore.jks"
-                             :key-password keystore-pass})]
+                            (jetty-opts keystore-pass))]
+    (reset! server-debug s)
     (code-from-channel c s)))
 
 (s/fdef get-tokens
@@ -124,6 +149,16 @@
                             tenant
                             clientid
                             all-scopes))))
+
+(s/fdef token
+  :args (s/cat :config (s/spec :auth/config))
+  :ret (s/spec :auth/token))
+(defn token [config]
+  (:token
+   (if (.exists (io/file tokens-filename))
+     (utils/load-edn tokens-filename)
+     (get-tokens config))))
+
 (s/fdef refresh-token
   :args (s/cat :config (s/spec :auth/config)
                :refresh-token (s/spec :auth/refresh-token))
@@ -141,14 +176,4 @@
            tokens)))))
   ([config]
    (refresh-token config
-                  (:refresh-token (utils/load-edn tokens-filename)))))
-
-(s/fdef token
-  :args (s/cat :config (s/spec :auth/config))
-  :ret (s/spec :auth/token))
-(defn token [config]
-  (:token
-   (if (.exists (io/file tokens-filename))
-     (utils/load-edn tokens-filename)
-     (get-tokens config))))
-
+                  (:refresh-token (token config)))))

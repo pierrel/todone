@@ -1,8 +1,7 @@
 (ns projuctivity.msgraph.api
-  (:use [projuctivity.api]
-        [projuctivity.msgraph.core])
-  (:require [clj-http.client :as http]
-            [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [projuctivity.msgraph.core :as core]
+            [projuctivity.api :as api]))
 
 (s/def :projuctivity.msgraph.api/clientid string?)
 (s/def :projuctivity.msgraph.api/tenant string?)
@@ -16,9 +15,9 @@
 
 ;; TODO: move keystorepass and ssl_keystore somewhere else
 (defrecord MSGraphUser [clientid tenant scopes keystorepass ssl_keystore]
-  EventSearch
+  api/EventSearch
   (events [user date1 date2]
-    (events-between user date1 date2)))
+    (core/events-between user date1 date2)))
 
 (def scopes ["user.read"
              "Tasks.ReadWrite"
