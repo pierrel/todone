@@ -140,7 +140,7 @@
   :args (s/cat :config (s/spec :auth/config))
   :ret (s/spec :auth/tokens))
 (defn get-tokens [config]
-  (let [{:auth/keys [clientid tenant scopes keystorepass]} config
+  (let [{:keys [clientid tenant scopes keystorepass]} config
         all-scopes (conj scopes "offline_access")
         code (get-code clientid tenant all-scopes keystorepass)]
     (println "got code" code)
