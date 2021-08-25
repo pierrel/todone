@@ -80,6 +80,15 @@
     "/testing"
     (resp/response "This is just a test")
     
+      "/stop"
+      (do
+        (f "stop")
+        (resp/response "Stopping"))
+
+      "/error"
+      (throw (ex-info "Testing out the error handling."
+                      {:source "error endpoint."}))
+
     ;; default
     (resp/redirect (urls/ms-auth-url clientid tenant scopes))))
 
@@ -143,12 +152,16 @@
   (let [{:keys [clientid tenant scopes keystorepass]} config
         all-scopes (conj scopes "offline_access")
         code (get-code clientid tenant all-scopes keystorepass)]
+    (case code
+      "stop" (throw "Auth process manually stopped.")
+      "error" (throw "Auth process stopped due to an error.")
+      (do
     (println "got code" code)
     (with-saved tokens-filename
       (get-tokens-from-code code
                             tenant
                             clientid
-                            all-scopes))))
+                                all-scopes))))))
 
 (s/fdef token
   :args (s/cat :config (s/spec :auth/config))
