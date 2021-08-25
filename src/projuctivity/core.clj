@@ -7,6 +7,9 @@
 (def calendar-user (atom nil))
 (def tasks-user (atom nil))
 
+(def users [calendar-user
+            tasks-user])
+
 (defn assign-users!
   "Assigns users based on the config."
   ([configuration]
@@ -26,9 +29,11 @@
                   @tasks-user])
     (assign-users!)))
 
-(defn auth []
+(defn auth-all []
   (check-and-assign!)
-  (api/auth @calendar-user))
+  (let [user-refs (set (map deref users))]
+    (doseq [user-ref user-refs]
+      (api/auth user-ref))))
 
 (defn events-between
   "Returns a lazy list of `Event`s between date1 and date2"

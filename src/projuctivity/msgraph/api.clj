@@ -17,7 +17,10 @@
 (defrecord MSGraphUser [clientid tenant scopes keystorepass ssl_keystore]
   api/EventSearch
   (events [user date1 date2]
-    (core/events-between user date1 date2)))
+    (core/events-between user date1 date2))
+  api/Auth
+  (auth [user]
+        (core/auth user)))
 
 (def scopes ["user.read"
              "Tasks.ReadWrite"
