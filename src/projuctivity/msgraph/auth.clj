@@ -153,8 +153,8 @@
         all-scopes (conj scopes "offline_access")
         code (get-code clientid tenant all-scopes keystorepass)]
     (case code
-      "stop" (throw "Auth process manually stopped.")
-      "error" (throw "Auth process stopped due to an error.")
+      "stop" (throw (ex-info "Auth process manually stopped." {}))
+      "error" (throw (ex-info "Auth process stopped due to an error." {}))
       (do
     (println "got code" code)
     (with-saved tokens-filename
