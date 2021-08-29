@@ -1,11 +1,20 @@
 (ns todone.core
   (:require [projuctivity.core :as proj]))
 
-(proj/assign-users!)
-@proj/calendar-user
 
 
-(proj/auth-all)
+(comment
+  (proj/assign-users!)
 
-(let [{:keys [clientid]} @proj/calendar-user]
-  clientid)
+  @proj/calendar-user
+
+
+
+  (proj/auth-all)
+
+  (proj/events-between "2021-01-01" "2021-03-01")
+
+
+  (let [{:keys [clientid]} @proj/calendar-user]
+    clientid)
+  )
