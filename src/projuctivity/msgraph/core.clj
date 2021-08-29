@@ -58,7 +58,7 @@
        (if (= (:status (ex-data e)) 401)
          (do
            (auth/refresh-token config)
-           (get-resource resource params))
+           (get-resource config resource params))
          (throw e)))))
   ([config resource params]
    (let [token (-> config auth/tokens :token)]
