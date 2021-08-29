@@ -40,7 +40,7 @@
    :ssl-port 4003
    :key-password keystore-pass
    :keystore "keystore.jks"})
- 
+
 (s/fdef code-from-channel
   :args (s/cat :channel (s/and (partial instance?
                                         clojure.core.async.impl.protocols/Channel)
@@ -63,17 +63,17 @@
 
 (defn handler [clientid tenant scopes f request]
   (try
-  (case (:uri request)
-    "/token"
-    (if-let [code (last (re-matches #".*code=([^&]+).*$"
-                                    (get request :query-string "")))]
-      (f code)
+    (case (:uri request)
+      "/token"
+      (if-let [code (last (re-matches #".*code=([^&]+).*$"
+                                      (get request :query-string "")))]
+        (f code)
       ;; TODO: implement error recovery: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow#error-response
-      (resp/response "Could not get code. This endpoint should only be redirected-to by MS. Use /auth to get started."))
+        (resp/response "Could not get code. This endpoint should only be redirected-to by MS. Use /auth to get started."))
 
-    "/testing"
-    (resp/response "This is just a test")
-    
+      "/testing"
+      (resp/response "This is just a test")
+
       "/stop"
       (do
         (f "stop")
@@ -133,8 +133,9 @@
                :scopes (s/spec :auth/scopes)
                :keystore-pass string?)
   :ret string?)
+;; TODO: pass in keystore filename instead of hardcoding it in @jetty-opts
 (defn get-code [clientid tenant scopes keystore-pass]
-  (println (format "Running server to request credentials. Please head over to %s" urls/auth-url))
+  (println (format "Running server to request credentials.\nPlease head over to %s" urls/auth-url))
   (let [c (async/chan)
         s (server/run-jetty (partial handler
                                      clientid
@@ -156,11 +157,11 @@
       "stop" (throw (ex-info "Auth process manually stopped." {}))
       "error" (throw (ex-info "Auth process stopped due to an error." {}))
       (do
-    (println "got code" code)
-    (with-saved tokens-filename
-      (get-tokens-from-code code
-                            tenant
-                            clientid
+        (println "got code" code)
+        (with-saved tokens-filename
+          (get-tokens-from-code code
+                                tenant
+                                clientid
                                 all-scopes))))))
 
 (s/fdef token
