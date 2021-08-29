@@ -173,8 +173,9 @@
     (get-tokens config)))
 
 (s/fdef refresh-token
-  :args (s/cat :config (s/spec :auth/config)
-               :refresh-token (s/spec :auth/refresh-token))
+  :args (s/alt :unary (s/cat :config (s/spec :auth/config))
+               :binary (s/cat :config (s/spec :auth/config)
+                              :refresh-token (s/spec :auth/refresh-token)))
   :ret (s/spec :auth/tokens))
 (defn refresh-token
   ([config refresh-token]
