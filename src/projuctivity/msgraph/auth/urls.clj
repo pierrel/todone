@@ -15,6 +15,11 @@
 (defn is-codespaces? [hostname]
   (-> (re-matches #"^codespaces.*" hostname) nil? not))
 
+(defn codespace-url []
+  (format "%s-%s.githubpreview.dev"
+          (get (System/getenv) "CODESPACE_NAME")
+          (str port)))
+
 (def on-device-hostname (.getHostName (InetAddress/getLocalHost)))
 
 (def local-hostname

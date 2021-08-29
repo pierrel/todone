@@ -25,12 +25,7 @@
 
 (def tokens-filename ".msgraph-tokens.edn")
 
-;; This is set whenever the server is started.
-;; Mostly for debug purposes.
-(def server-debug (atom nil))
-
-(def on-codespaces?
-  (urls/is-codespaces? urls/on-device-hostname))
+(defonce server-debug (atom nil))
 
 (defn- with-saved
   "Saves the content to the temp file and returns the content."
