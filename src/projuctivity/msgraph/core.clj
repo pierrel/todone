@@ -69,12 +69,13 @@
 (defn- events-between-raw
   "Pages through events and returns a lazy sequence of raw event json."
   ([config d1 d2]
-   (let [resp (get-resource config
+   (let [args (zipmap ["startdatetime"
+                       "enddatetime"]
+                      (map str
+                           (sort t/before? [d1 d2])))
+         resp (get-resource config
                             "me/calendarview"
-                            (zipmap ["startdatetime"
-                                     "enddatetime"]
-                                    (map str
-                                         (sort t/before? [d1 d2]))))
+                            args)
          values (get resp "value")
          thenext (get resp "@odata.nextLink")]
      (lazy-seq (concat values
