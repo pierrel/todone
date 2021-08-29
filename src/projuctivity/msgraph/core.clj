@@ -61,7 +61,7 @@
            (get-resource resource params))
          (throw e)))))
   ([config resource params]
-   (let [token (auth/token config)]
+   (let [token (-> config auth/tokens :token)]
      (get-resource config resource params token)))
   ([config resource]
    (get-resource config resource {})))
