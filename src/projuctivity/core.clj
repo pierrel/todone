@@ -39,8 +39,10 @@
       (api/auth user-ref))))
 
 (s/fdef events-between
-  :args (s/cat :date1 pure/is-time?
-               :date2 pure/is-time?)
+  :args (s/cat :date1 (s/or :time pure/is-time?
+                            :string string?)
+               :date2 (s/or :time pure/is-time?
+                            :string string?))
   :ret (s/coll-of (partial instance? Event)))
 (defn events-between
   "Returns a lazy list of `Event`s between date1 and date2.

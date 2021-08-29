@@ -14,7 +14,7 @@
                    :projuctivity.msgraph.api/tenant]))
 
 ;; TODO: move keystorepass and ssl_keystore somewhere else
-(defrecord MSGraphUser [clientid tenant scopes keystorepass ssl_keystore]
+(defrecord MSGraphUser [clientid tenant scopes keystorepass ssl-keystore]
   api/EventSearch
   (events [user date1 date2]
     (core/events-between user date1 date2))

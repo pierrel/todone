@@ -12,11 +12,11 @@
 (s/def :auth/clientid string?)
 (s/def :auth/tenant string?)
 (s/def :auth/keystorepass string?)
-(s/def :auth/ssl_keystore string?)
+(s/def :auth/ssl-keystore string?)
 (s/def :auth/config (s/keys :req-un [:auth/clientid
                                      :auth/tenant
                                      :auth/keystorepass
-                                     :auth/ssl_keystore
+                                     :auth/ssl-keystore
                                      :auth/scopes]))
 
 (s/def :auth/token string?)
