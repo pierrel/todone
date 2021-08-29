@@ -22,12 +22,15 @@
 
 (def on-device-hostname (.getHostName (InetAddress/getLocalHost)))
 
-(def local-hostname
-  (if (re-matches #"^codespaces.*" on-device-hostname)
-    "localhost"
+(def public-hostname
+  (if (is-codespaces? on-device-hostname)
+    (codespace-url)
     on-device-hostname))
 
-(def base-url (format "https://%s:%s" local-hostname (str port)))
+(def base-url (format "https://%s%s" public-hostname
+                      (if (is-codespaces? on-device-hostname)
+                        ""
+                        (str ":" port))))
 
 (def redirect-url (format "%s%s" base-url redirect-path))
 (def auth-url (format "%s%s" base-url auth-path))
@@ -57,7 +60,8 @@
                                 (name k)
                                 (codec/url-encode v)))
                       params))))
-
+(comment
+  (query-string "haha" ["one" "troe"]))
 (s/fdef ms-auth-url
   :args (s/cat :clientid string?
                :tenant string?
