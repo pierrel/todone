@@ -1,8 +1,11 @@
 (ns projuctivity.core
-  (:use [projuctivity.models])
   (:require [projuctivity.msgraph.api :as ms]
             [projuctivity.api :as api]
-            [projuctivity.config :as config]))
+            [projuctivity.config :as config]
+            [projuctivity.core.pure :as pure]
+            [clojure.spec.alpha :as s]
+            [projuctivity.models :as models])
+  (:import [projuctivity.models Event]))
 
 (def calendar-user (atom nil))
 (def tasks-user (atom nil))
@@ -35,11 +38,21 @@
     (doseq [user-ref user-refs]
       (api/auth user-ref))))
 
+(s/fdef events-between
+  :args (s/cat :date1 pure/is-time?
+               :date2 pure/is-time?)
+  :ret (s/coll-of (partial instance? Event)))
 (defn events-between
-  "Returns a lazy list of `Event`s between date1 and date2"
+  "Returns a lazy list of `Event`s between date1 and date2.
+   
+   Converts dates to the correct format if necessary."
   [date1 date2]
   (check-and-assign!)
-  (api/events @calendar-user date1 date2))
+  (let [[d1 d2] (map #(if (pure/is-time? %)
+                        %
+                        (pure/str-to-time %))
+                     [date1 date2])]
+    (api/events @calendar-user d1 d2)))
 
 (defn open-tasks
   "Returns a lazy list of open `Task`s"
