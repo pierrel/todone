@@ -67,6 +67,7 @@
   (async/go (async/>! channel code)))
 
 (defn handler [clientid tenant scopes f request]
+  (try
   (case (:uri request)
     "/token"
     (if-let [code (last (re-matches #".*code=([^&]+).*$"
@@ -88,7 +89,13 @@
                       {:source "error endpoint."}))
 
     ;; default
-    (resp/redirect (urls/ms-auth-url clientid tenant scopes))))
+      (let [dest (urls/ms-auth-url clientid tenant scopes)]
+        (resp/redirect dest)))
+
+    ;; Let the channel know there was an error
+    (catch RuntimeException e
+      (f "error")
+      (throw e))))
 
 (s/fdef get-tokens-from-code
   :args (s/cat :code string?
