@@ -2,7 +2,7 @@
   (:require [projuctivity.core :as proj]))
 
 
-
+;; TODO before making too much more progress run everything with everything instrumented
 (comment
   (proj/assign-users!)
 
