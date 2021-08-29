@@ -5,7 +5,7 @@
             [projuctivity.core.pure :as pure]
             [clojure.spec.alpha :as s]
             [projuctivity.models :as models])
-  (:import [projuctivity.models Event]))
+  (:import [projuctivity.models Event Task]))
 
 (def calendar-user (atom nil))
 (def tasks-user (atom nil))
@@ -56,6 +56,8 @@
                      [date1 date2])]
     (api/events @calendar-user d1 d2)))
 
+(s/fdef open-tasks
+        :ret (s/coll-of (partial instance? Task)))
 (defn open-tasks
   "Returns a lazy list of open `Task`s"
   []
