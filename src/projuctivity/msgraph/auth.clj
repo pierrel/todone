@@ -164,14 +164,13 @@
                                 clientid
                                 all-scopes))))))
 
-(s/fdef token
+(s/fdef tokens
   :args (s/cat :config (s/spec :auth/config))
   :ret (s/spec :auth/token))
-(defn token [config]
-  (:token
-   (if (.exists (io/file tokens-filename))
-     (utils/load-edn tokens-filename)
-     (get-tokens config))))
+(defn tokens [config]
+  (if (.exists (io/file tokens-filename))
+    (utils/load-edn tokens-filename)
+    (get-tokens config)))
 
 (s/fdef refresh-token
   :args (s/cat :config (s/spec :auth/config)
@@ -190,4 +189,4 @@
            tokens)))))
   ([config]
    (refresh-token config
-                  (:refresh-token (token config)))))
+                  (:refresh-token (tokens config)))))
