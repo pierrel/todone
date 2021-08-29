@@ -1,4 +1,4 @@
-(ns dev
+(ns user
   (:require [projuctivity.core :as proj]
             [clojure.spec.test.alpha :as stest]))
 
