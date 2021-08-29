@@ -2,7 +2,7 @@
   (:require  [clojure.test :as t]
              [clojure.spec.test.alpha :as spectest]
              [projuctivity.msgraph.core-test :as core-test]
-             [projuctivity.msgraph.auth.pure-test :as auth-pure-test]
+             [projuctivity.msgraph.auth.urls-test :as auth-urls-test]
              [projuctivity.transform-test :as transform-test]
              [projuctivity.config-test :as config-test]))
 
@@ -14,7 +14,7 @@
 
 (defn -main [& args]
   (let [res (t/run-tests 'projuctivity.msgraph.core-test
-                         'projuctivity.msgraph.auth.pure-test
+                         'projuctivity.msgraph.auth.urls-test
                          'projuctivity.transform-test
                          'projuctivity.config-test)]
     (System/exit (if (passed? res)
