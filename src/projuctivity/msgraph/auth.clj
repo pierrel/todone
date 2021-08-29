@@ -39,14 +39,12 @@
   content)
 
 (defn jetty-opts [keystore-pass]
-  (let [init {:port urls/port
-              :join? false}]
-    (if on-codespaces?
-      init
-      (merge init
-             {:ssl? true
-              :keystore "keystore.jks"
-              :key-password keystore-pass}))))
+  {:port urls/port
+   :join? false
+   :ssl? true
+   :ssl-port 4003
+   :key-password keystore-pass
+   :keystore "keystore.jks"})
  
 (s/fdef code-from-channel
   :args (s/cat :channel (s/and (partial instance?
