@@ -1,0 +1,9 @@
+{
+    "calva.replConnectSequences": [
+        {
+            "name": "dev",
+            "projectType": "deps.edn",
+            "cljsType": "none"
+        }
+    ]
+}
