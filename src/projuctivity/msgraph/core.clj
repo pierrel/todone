@@ -1,33 +1,23 @@
 (ns projuctivity.msgraph.core
-  (:require [clj-http.client :as http]
-            [cheshire.core :as json]
+  (:require [projuctivity.request.core :as request]
             [clojure.spec.alpha :as s]
             [java-time :as t]
             [projuctivity.msgraph.auth :as auth]
-            [projuctivity.msgraph.pure :as pure]))
+            [projuctivity.msgraph.pure :as pure])
+  (:import [projuctivity.request.core JSONService]))
 
 (def base-url "https://graph.microsoft.com")
+(def service (JSONService. base-url))
 
 (defn contains-base? [url]
   (re-matches #"^https.*" url))
 
 (s/def :msgraph/body (s/with-gen
                        (s/and string?
-                              #(try
-                                 (json/parse-string %)
-                                 true
-                                 (catch com.fasterxml.jackson.core.JsonParseException ex
-                                   false)
-                                 (finally false)))
+                              request/body?)
                        #(s/gen #{"{}"
                                  "{'hello': 'there'}"})))
 (s/def :msgraph/response (s/keys :req-un [:msgraph/body]))
-
-(s/fdef httpget
-  :args (s/cat :url string?
-               :params map?)
-  :ret (s/spec :msgraph/response))
-(def httpget http/get)
 
 (defn auth [config]
   (auth/refresh-token config))
@@ -47,13 +37,9 @@
   "Sends a GET request to the desired resource with parameters and token."
   ([config resource params token]
    (try
-     (let [url (if (contains-base? resource)
-                 resource
-                 (format "%s/v1.0/%s" base-url resource))
-           params {:headers {:authorization (format "Bearer %s" token)}
-                   :query-params params}
-           resp (httpget url params)]
-       (json/parse-string (:body resp)))
+     (let [params {:headers {:authorization (format "Bearer %s" token)}
+                   :query-params params}]
+       (get service resource params))
      (catch Exception e
        (if (= (:status (ex-data e)) 401)
          (do
