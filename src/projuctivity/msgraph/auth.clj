@@ -83,9 +83,12 @@
       (throw (ex-info "Testing out the error handling."
                       {:source "error endpoint."}))
 
-    ;; default
+      "/auth"
       (let [dest (urls/ms-auth-url clientid tenant scopes)]
-        (resp/redirect dest)))
+        (resp/redirect dest))
+
+      ;; default
+      (resp/response "Please go to /auth for authentication or /stop to stop the server."))
 
     ;; Let the channel know there was an error
     (catch RuntimeException e
