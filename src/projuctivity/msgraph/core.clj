@@ -10,27 +10,28 @@
 (def base-url "https://graph.microsoft.com")
 (def service (JSONService. base-url))
 
-(defn contains-base? [url]
-  (re-matches #"^https.*" url))
+(defn- has-version? [resource]
+  (re-find #"v\d+\.\d+/" resource))
 
 (s/def :msgraph/body (s/with-gen
                        (s/and string?
                               request/body?)
                        #(s/gen #{"{}"
                                  "{'hello': 'there'}"})))
-(s/def :msgraph/response (s/keys :req-un [:msgraph/body]))
+(s/def :projuctivity.msgraph/resource (s/and string?
+                                has-version?))
 
 (defn auth [config]
   (auth/refresh-token config))
 
 (s/fdef get-resource
   :args (s/alt :binary (s/cat :config :projuctivity.msgraph.api/config
-                              :resource string?)
+                              :resource :projuctivity.msgraph/resource)
                :trinary (s/cat :config :projuctivity.msgraph.api/config
-                               :resource string?
+                               :resource :projuctivity.msgraph/resource
                                :params map?)
                :quaternary (s/cat :config :projuctivity.msgraph.api/config
-                                  :resource string?
+                                  :resource :projuctivity.msgraph/resource
                                   :params map?
                                   :token string?))
   :ret map?)
