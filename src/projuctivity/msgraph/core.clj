@@ -1,5 +1,6 @@
 (ns projuctivity.msgraph.core
-  (:require [projuctivity.request.core :as request]
+  (:require [projuctivity.request.api :as req-api]
+            [projuctivity.request.core :as request]
             [clojure.spec.alpha :as s]
             [java-time :as t]
             [projuctivity.msgraph.auth :as auth]
@@ -39,7 +40,7 @@
    (try
      (let [params {:headers {:authorization (format "Bearer %s" token)}
                    :query-params params}]
-       (get service resource params))
+       (req-api/get service resource params))
      (catch Exception e
        (if (= (:status (ex-data e)) 401)
          (do
@@ -60,7 +61,7 @@
                       (map str
                            (sort t/before? [d1 d2])))
          resp (get-resource config
-                            "me/calendarview"
+                            "v1.0/me/calendarview"
                             args)
          values (get resp "value")
          thenext (get resp "@odata.nextLink")]
