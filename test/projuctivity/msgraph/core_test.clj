@@ -7,6 +7,6 @@
 (spectest/instrument `sut/httpget {:stub #{`sut/httpget}})
 
 (t/deftest spec-checks
-  (let [results (spectest/summarize-results
-                 (spectest/check 'sut/get-resource
-                                 'sut/httpget))]))
+  (spectest/summarize-results
+   (spectest/check 'sut/get-resource
+                   'sut/httpget)))
