@@ -16,6 +16,7 @@
   (let [res (t/run-tests 'projuctivity.msgraph.core-test
                          'projuctivity.msgraph.auth.urls-test
                          'projuctivity.transform-test
+                         'projuctivity.cache-test
                          'projuctivity.config-test)]
     (System/exit (if (passed? res)
                    0
