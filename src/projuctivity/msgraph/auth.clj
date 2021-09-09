@@ -1,13 +1,14 @@
 (ns projuctivity.msgraph.auth
   "Auth workflows."
   (:require [ring.adapter.jetty :as server]
-            [projuctivity.msgraph.utils :as utils]
-            [clojure.java.io :as io]
             [clojure.core.async :as async]
             [ring.util.response :as resp]
+            [projuctivity.cache.api :as cache-api]
+            [projuctivity.cache.file]
             [clj-http.client :as http]
             [clojure.spec.alpha :as s]
-            [projuctivity.msgraph.auth.urls :as urls]))
+            [projuctivity.msgraph.auth.urls :as urls])
+  (:import [projuctivity.cache.file EDNFileCache]))
 
 (s/def :auth/clientid string?)
 (s/def :auth/tenant string?)
@@ -23,15 +24,9 @@
 (s/def :auth/refresh-token string?)
 (s/def :auth/tokens (s/keys :req-un [:auth/token :auth/refresh-token]))
 
-(def tokens-filename ".msgraph-tokens.edn")
+(def cache (EDNFileCache. ".msgraph-cache.edn"))
 
 (defonce server-debug (atom nil))
-
-(defn- with-saved
-  "Saves the content to the temp file and returns the content."
-  [filename content]
-  (utils/save-edn filename content)
-  content)
 
 (defn jetty-opts [keystore-pass]
   {:port urls/port
@@ -155,7 +150,7 @@
       "error" (throw (ex-info "Auth process stopped due to an error." {}))
       (do
         (println "got code" code)
-        (with-saved tokens-filename
+        (cache-api/with-saved cache :tokens
           (get-tokens-from-code code
                                 tenant
                                 clientid
@@ -165,8 +160,8 @@
   :args (s/cat :config (s/spec :auth/config))
   :ret (s/spec :auth/token))
 (defn tokens [config]
-  (if (.exists (io/file tokens-filename))
-    (utils/load-edn tokens-filename)
+  (if-let [tokens-map (cache-api/retrieve cache :tokens)]
+    tokens-map
     (get-tokens config)))
 
 (s/fdef refresh-token
@@ -177,14 +172,14 @@
 (defn refresh-token
   ([config refresh-token]
    (let [{:keys [clientid tenant scopes]} config]
-     (with-saved tokens-filename
+     (cache-api/with-saved cache :tokens
        (let [tokens (get-tokens-from-refresh-token refresh-token
                                                    tenant
                                                    clientid
                                                    scopes)]
          (if (nil? (:refresh-token tokens))
            (assoc tokens :refresh-token refresh-token)
-           tokens)))))
-  ([config]
-   (refresh-token config
-                  (:refresh-token (tokens config)))))
+           tokens)))
+     ([config]
+      (refresh-token config
+                     (:refresh-token (tokens config)))))))
