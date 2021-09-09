@@ -42,12 +42,6 @@
    :keystore "keystore.jks"})
 
 (s/fdef code-from-channel
-  :args (s/cat :channel (s/and (partial instance?
-                                        clojure.core.async.impl.protocols/Channel)
-                               (partial instance?
-                                        clojure.core.async.impl.protocols/ReadPort))
-               :server (partial instance?
-                                org.eclipse.jetty.util.component.LifeCycle))
   :ret string?)
 (defn- code-from-channel
   "Waits for the code to be passed to the channel.
