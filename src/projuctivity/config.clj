@@ -1,22 +1,21 @@
 (ns projuctivity.config
   "Reads and organizes the config file."
   (:use [projuctivity.config.pure])
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [projuctivity.msgraph.utils :as utils]))
 
 (s/def
   :projuctivity.config/multiarity-config-input
   (s/alt :nullary (s/cat)
          :unary (s/cat :config :projuctivity.config/config)))
 
-(def filename ".config.edn")
+(def filename ".configv2.edn")
 
-(defn load-edn
-  "Load edn from an io/reader source (filename or io/resource).
-  TODO: Move to utils."
-  [source]
-  (read-string (slurp source)))
-
-(def config (load-edn filename))
+(defn load-config
+  ([config-filename]
+   (utils/load-edn config-filename))
+  ([]
+   (load-config filename)))
 
 (s/fdef server-config
   :args :projuctivity.config/multiarity-config-input
@@ -26,7 +25,7 @@
   ([config]
    (:server config))
   ([]
-   (server-config config)))
+   (server-config (load-config))))
 
 (s/fdef calendar-config
   :args :projuctivity.config/multiarity-config-input
@@ -36,7 +35,7 @@
   ([config]
    (service-part :calendar config))
   ([]
-   (calendar-config config)))
+   (calendar-config (load-config))))
 
 (s/fdef tasks-config
   :args :projuctivity.config/multiarity-config-input
@@ -46,4 +45,4 @@
   ([config]
    (service-part :tasks config))
   ([]
-   (tasks-config config)))
+   (tasks-config (load-config))))

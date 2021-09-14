@@ -23,7 +23,7 @@
          :msgraph (reset! user (ms/user (merge user-config
                                                server-config)))))))
   ([]
-   (assign-users! config/config)))
+   (assign-users! (config/load-config))))
 
 (defn check-and-assign!
   "Assigns users if they have not already been assigned."

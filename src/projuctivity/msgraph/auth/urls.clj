@@ -20,20 +20,16 @@
           (get (System/getenv) "CODESPACE_NAME")
           (str port)))
 
-(def on-device-hostname (.getHostName (InetAddress/getLocalHost)))
-
-(def public-hostname
+(defn public-hostname []
   (if (is-codespaces? on-device-hostname)
     (codespace-url)
-    on-device-hostname))
+    "localhost"))
 
-(def base-url (format "https://%s%s" public-hostname
-                      (if (is-codespaces? on-device-hostname)
-                        ""
-                        (str ":" port))))
+(defn base-url []
+  (format "https://%s" (public-hostname)))
 
-(def redirect-url (format "%s%s" base-url redirect-path))
-(def auth-url (format "%s%s" base-url auth-path))
+(def redirect-url (format "%s%s" (base-url) redirect-path))
+(def auth-url (format "%s%s" (base-url) auth-path))
 
 (s/fdef ms-auth-endpoint
   :args (s/cat :tenant string?)
