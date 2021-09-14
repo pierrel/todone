@@ -3,6 +3,7 @@
   (:require [ring.adapter.jetty :as server]
             [clojure.core.async :as async]
             [ring.util.response :as resp]
+            [ring.middleware.ssl :as ssl]
             [projuctivity.cache.api :as cache-api]
             [projuctivity.cache.file]
             [clj-http.client :as http]
@@ -29,12 +30,11 @@
 (defonce server-debug (atom nil))
 
 (defn jetty-opts [keystore-pass]
-  {:port urls/port
-   :join? false
-   :ssl? true
-   :ssl-port 4003
+  {:port         urls/port
+   :ssl?          true
+   :keystore "keystore.jks"
    :key-password keystore-pass
-   :keystore "keystore.jks"})
+   :join?        false})
 
 (s/fdef code-from-channel
   :ret string?)
@@ -128,13 +128,20 @@
 ;; TODO: pass in keystore filename instead of hardcoding it in @jetty-opts
 (defn get-code [clientid tenant scopes keystore-pass]
   (println (format "Running server to request credentials.\nPlease head over to %s" urls/auth-url))
-  (let [c (async/chan)
-        s (server/run-jetty (partial handler
-                                     clientid
-                                     tenant
-                                     scopes
-                                     (partial carry-code c))
-                            (jetty-opts keystore-pass))]
+  (let [c           (async/chan)
+        the-handler (-> (partial handler
+                                 clientid
+                                 tenant
+                                 scopes
+                                 (partial carry-code c))
+                        ssl/wrap-hsts
+                        ssl/wrap-ssl-redirect)
+        opts        {:port         3000
+                     :ssl?         true
+                     :keystore     "keystore.jks"
+                     :key-password "todone"
+                     :join?        false}
+        s           (server/run-jetty the-handler opts)]
     (reset! server-debug s)
     (code-from-channel c s)))
 
