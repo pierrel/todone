@@ -11,6 +11,8 @@
 (def redirect-path "/token")
 (def auth-path "/auth")
 (def port 3000)
+(def on-device-hostname
+  (.getHostName (InetAddress/getLocalHost)))
 
 (defn is-codespaces? [hostname]
   (-> (re-matches #"^codespaces.*" hostname) nil? not))
