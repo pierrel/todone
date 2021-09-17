@@ -14,7 +14,8 @@
 (t/use-fixtures :once
   (fn [f]
     (delete-if-exists filename)
-    (f)))
+    (f)
+    (delete-if-exists filename)))
 
 (t/deftest edn-file-cache
   (let [cache (EDNFileCache. filename)
