@@ -25,7 +25,7 @@
 (defn public-hostname []
   (if (is-codespaces? on-device-hostname)
     (codespace-url)
-    "localhost"))
+    on-device-hostname))
 
 (defn base-url []
   (format "https://%s" (public-hostname)))
