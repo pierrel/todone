@@ -3,6 +3,7 @@
 
 ;; TODO probably move this somewhere more central
 (s/def :projuctivity.config/clientid string?)
+(s/def :projuctivity.config/client-secret string?)
 (s/def :projuctivity.config/tenant string?)
 ;; TODO update services spec to only match a set of services
 (s/def :projuctivity.config/services (s/coll-of keyword?
@@ -15,7 +16,8 @@
                                             :projuctivity.config/ssl-keystore]))
 (s/def :projuctivity.config/msgraph (s/keys :req-un [:projuctivity.config/clientid
                                                      :projuectivity.config/tenant
-                                                     :projuctivity.config/services]))
+                                                     :projuctivity.config/services]
+                                            :opt-un [:projuctivity.config/client-secret]))
 (s/def :projuctivity.config/service-config :projuctivity.config/msgraph)
 (s/def :projuctivity.config/config (s/keys :req-un [:projuctivity.config/server]
                                            :opt-un [:projuctivity.config/msgraph]))

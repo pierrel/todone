@@ -70,16 +70,20 @@
           (ms-auth-endpoint tenant)
           (query-string clientid scopes)))
 
-(defn token-request-params [code tenant clientid scopes refresh?]
+(defn token-request-params [code tenant clientid client-secret scopes refresh?]
   (let [url (format "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
                     tenant)
         scope (string/join " "
                            (filter (partial not= "offline_access")
                                    (map string/lower-case
                                         scopes)))
-        base-params {:client_id clientid
-                     :scope scope
-                     :redirect_uri redirect-url}]
+        secret (if (string/blank? client-secret)
+                 {}
+                 {:client_secret client-secret})
+        base-params (merge {:client_id clientid
+                            :scope scope
+                            :redirect_uri redirect-url}
+                           secret)]
     {:url url
      :params (merge base-params
                     (if refresh?

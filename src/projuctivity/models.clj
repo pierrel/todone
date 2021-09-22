@@ -17,4 +17,4 @@
      due])
 
 (defrecord User
-    [token retry-token client-id secret tenant service])
+    [token retry-token client-id client-secret tenant service])

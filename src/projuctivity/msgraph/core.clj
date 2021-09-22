@@ -39,9 +39,10 @@
   "Sends a GET request to the desired resource with parameters and token."
   ([config resource params token]
    (try
-     (let [params {:headers {:authorization (format "Bearer %s" token)}
-                   :query-params params}]
-       (req-api/get service resource params))
+     (let [req-params {:headers {:authorization (format "Bearer %s" token)}
+                       :query-params (merge params
+                                            (pure/config-params config))}]
+       (req-api/get service resource req-params))
      (catch Exception e
        (if (= (:status (ex-data e)) 401)
          (do

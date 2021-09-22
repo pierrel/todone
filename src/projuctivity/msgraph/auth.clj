@@ -92,10 +92,11 @@
                :clientid string?
                :scopes (s/spec :auth/scopes))
   :ret (s/spec :auth/tokens))
-(defn get-tokens-from-code [code tenant clientid scopes]
+(defn get-tokens-from-code [code tenant clientid client-secret scopes]
   (let [{:keys [url params]} (urls/token-request-params code
                                                         tenant
                                                         clientid
+                                                        client-secret
                                                         scopes
                                                         false)]
     (urls/tokens-from-token-response
@@ -151,7 +152,8 @@
   :args (s/cat :config (s/spec :auth/config))
   :ret (s/spec :auth/tokens))
 (defn get-tokens [config]
-  (let [{:keys [clientid tenant scopes keystorepass]} config
+  (let [{:keys [clientid client-secret tenant scopes keystorepass]
+         :or {client-secret ""}} config
         all-scopes (conj scopes "offline_access")
         code (get-code clientid tenant all-scopes keystorepass)]
     (case code
@@ -163,6 +165,7 @@
           (get-tokens-from-code code
                                 tenant
                                 clientid
+                                client-secret
                                 all-scopes))))))
 
 (s/fdef tokens
