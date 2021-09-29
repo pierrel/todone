@@ -16,6 +16,7 @@
                       {:git/url "https://github.com/cognitect-labs/test-runner.git"
                        :sha "48c3c67f98362ba1e20526db4eeb6996209c050a"}}
          :main-opts ["-m" "cognitect.test-runner"]
+         ;; TODO: instrument specs before running tests
          :exec-fn cognitect.test-runner.api/test}
   :dev {:extra-paths ["test"]
         :extra-deps {org.clojure/test.check {:mvn/version "1.1.0"}}}}}

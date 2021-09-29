@@ -17,6 +17,7 @@
   ([]
    (load-config filename)))
 
+;; TODO: must move the auth-related server config into the service key
 (s/fdef server-config
   :args :projuctivity.config/multiarity-config-input
   :ret :projuctivity.config/server)
