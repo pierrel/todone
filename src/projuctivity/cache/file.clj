@@ -36,8 +36,5 @@
           new-contents (assoc (edn-file-contents file)
                          k
                          v)]
-      (utils/save-edn file new-contents)))
-  (with-saved [c k v]
-    (api/place c k v)
-    v))
+      (utils/save-edn file new-contents))))
 

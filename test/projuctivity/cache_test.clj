@@ -5,6 +5,7 @@
   (:import [projuctivity.cache.file EDNFileCache]))
 
 (def filename "test-cache.edn")
+(def cache (EDNFileCache. filename))
 
 (defn delete-if-exists [filename]
   (let [file (io/file filename)]
@@ -17,13 +18,18 @@
     (f)
     (delete-if-exists filename)))
 
-(t/deftest edn-file-cache
-  (let [cache (EDNFileCache. filename)
-        k :test-key
-        v {:something "here"}]
-    (t/is (nil? (api/retrieve cache :test-key)))
+(t/deftest empty-retrieve
+  (delete-if-exists filename)
+  (t/is (nil? (api/retrieve cache :test-key))))
 
-    (do
-      (api/place cache k v)
-      (t/is (.exists (io/file filename)))
-      (t/is (= v (api/retrieve cache k))))))
+(t/deftest put-then-retrieve
+  (let [k :test-key
+        v {:something "here"}]
+    (api/place cache k v)
+    (t/is (= v (api/retrieve cache k)))))
+
+(t/deftest with-saved
+  (let [k :other-test-key
+        v {:hey "there"}]
+    (t/is (= v (api/with-saved cache k v)))
+    (t/is (= v (api/retrieve cache k)))))
