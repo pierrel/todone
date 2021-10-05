@@ -37,14 +37,15 @@
   [resource]
   (-> resource remove-leading-slash add-trailing-slash))
 
-(defn inner-get
-  "Makes a GET request to hostname/resource with params."
-  [hostname resource params]
+(defn inner-request
+  "Makes a request using `method` to
+  `hostname`/`resource` with `params`."
+  [method hostname resource params]
   (try
     (let [url (format "%s/%s"
                       (sanitize-hostname hostname)
                       (sanitize-resource resource))
-          resp  (http/get url params)]
+          resp  (method url params)]
       (json/parse-string (:body resp)))
     (catch Exception e
       (println (ex-data e))
@@ -53,4 +54,6 @@
 (defrecord JSONService [hostname]
   api/HTTPRequest
   (get [service resource params]
-       (inner-get (:hostname service) resource params)))
+    (inner-request http/get (:hostname service) resource params))
+  (post [service resource params]
+    (inner-request http/post (:hostname service) resource params)))

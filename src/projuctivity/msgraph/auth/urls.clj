@@ -2,9 +2,8 @@
   "URLs related to authentication"
   (:require [ring.util.codec :as codec]
             [clojure.string :as string]
-            [clojure.spec.alpha :as s]
-            [cheshire.core :as json])
-  (:import (java.net InetAddress)))
+            [clojure.spec.alpha :as s])
+  (:import [java.net InetAddress]))
 
 (s/def :auth/scopes (s/coll-of string?))
 
@@ -71,7 +70,7 @@
           (query-string clientid scopes)))
 
 (defn token-request-params [code tenant clientid client-secret scopes refresh?]
-  (let [url (format "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+  (let [url (format "/%s/oauth2/v2.0/token"
                     tenant)
         scope (string/join " "
                            (filter (partial not= "offline_access")

@@ -1,15 +1,17 @@
 (ns projuctivity.msgraph.auth
   "Auth workflows."
   (:require [ring.adapter.jetty :as server]
+            [projuctivity.request.api :as request-api]
+            [projuctivity.request.core :as request]
             [clojure.core.async :as async]
             [ring.util.response :as resp]
             [ring.middleware.ssl :as ssl]
             [projuctivity.cache.api :as cache-api]
             [projuctivity.cache.file]
-            [clj-http.client :as http]
             [clojure.spec.alpha :as s]
             [projuctivity.msgraph.auth.urls :as urls])
-  (:import [projuctivity.cache.file EDNFileCache]))
+  (:import [projuctivity.cache.file EDNFileCache]
+           [projuctivity.request.core JSONService]))
 
 (s/def :auth/clientid string?)
 (s/def :auth/tenant string?)
@@ -26,6 +28,7 @@
 (s/def :auth/tokens (s/keys :req-un [:auth/token :auth/refresh-token]))
 
 (def cache (EDNFileCache. ".msgraph-cache.edn"))
+(def service (JSONService. "https://login.microsoftonline.com"))
 
 (defonce server-debug (atom nil))
 
@@ -100,10 +103,11 @@
                                                         scopes
                                                         false)]
     (urls/tokens-from-token-response
-     (http/post url
-                {:accept :json
-                 :content-type :application/x-www-form-urlencoded
-                 :form-params params}))))
+     (request-api/post service
+                       url
+                       {:accept :json
+                        :content-type :application/x-www-form-urlencoded
+                        :form-params params}))))
 
 (s/fdef get-tokens-from-refresh-token
   :args (s/cat :refresh-token string?
@@ -118,10 +122,11 @@
                                                         scopes
                                                         true)]
     (urls/tokens-from-token-response
-     (http/post url
-                {:accept :json
-                 :content-type :application/x-www-form-urlencoded
-                 :form-params params}))))
+     (request-api/post service
+                       url
+                       {:accept :json
+                        :content-type :application/x-www-form-urlencoded
+                        :form-params params}))))
 (s/fdef get-code
   :args (s/cat :clientid string?
                :tenant string?
