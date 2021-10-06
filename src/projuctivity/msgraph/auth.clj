@@ -93,6 +93,7 @@
   :args (s/cat :code string?
                :tenant string?
                :clientid string?
+               :client-secret string?
                :scopes (s/spec :auth/scopes))
   :ret (s/spec :auth/tokens))
 (defn get-tokens-from-code [code tenant clientid client-secret scopes]
