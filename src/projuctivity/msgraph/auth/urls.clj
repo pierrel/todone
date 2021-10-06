@@ -91,7 +91,6 @@
                       {:grant_type "authorization_code"
                        :code code}))}))
 
-(defn tokens-from-token-response [resp]
-  (let [body (json/parse-string (:body resp))]
-    {:token (get body "access_token")
-     :refresh-token (get body "refresh_token")}))
+(defn tokens-from-token-response [body]
+  {:token (get body "access_token")
+   :refresh-token (get body "refresh_token")})
