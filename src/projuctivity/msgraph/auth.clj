@@ -194,6 +194,7 @@
                :binary (s/cat :config (s/spec :auth/config)
                               :refresh-token (s/spec :auth/refresh-token)))
   :ret (s/spec :auth/tokens))
+;; TODO: How do I make the cache here injectable?
 (defn refresh-token
   ([config refresh-token]
    (let [{:keys [clientid tenant scopes]} config]
