@@ -6,7 +6,7 @@
 
 (defn body?
  "Checks whether this is a JSON body.
-  Mostly for use with validating responses with spec." 
+  Mostly for use with validating responses with spec."
   [s]
   (try
     (json/parse-string s)
