@@ -32,13 +32,6 @@
 
 (defonce server-debug (atom nil))
 
-(defn jetty-opts [keystore-pass]
-  {:port         urls/port
-   :ssl?          true
-   :keystore "keystore.jks"
-   :key-password keystore-pass
-   :join?        false})
-
 (s/fdef code-from-channel
   :ret string?)
 (defn- code-from-channel
@@ -132,7 +125,6 @@
   :args (s/cat :config (s/spec :auth/config)
                :scopes (s/spec :auth/scopes))
   :ret string?)
-;; TODO: pass in keystore filename instead of hardcoding it in @jetty-opts
 (defn get-code [config scopes]
   (println (format "Running server to request credentials.\nPlease head over to %s" urls/auth-url))
   (let [{:keys [clientid
