@@ -27,7 +27,7 @@
 (s/def :auth/refresh-token string?)
 (s/def :auth/tokens (s/keys :req-un [:auth/token :auth/refresh-token]))
 
-(def cache (EDNFileCache. ".msgraph-cache.edn"))
+(def default-cache (EDNFileCache. ".msgraph-cache.edn"))
 (def service (JSONService. "https://login.microsoftonline.com"))
 
 (defonce server-debug (atom nil))
@@ -129,58 +129,73 @@
                         :content-type :application/x-www-form-urlencoded
                         :form-params params}))))
 (s/fdef get-code
-  :args (s/cat :clientid string?
-               :tenant string?
-               :scopes (s/spec :auth/scopes)
-               :keystore-pass string?)
+  :args (s/cat :config (s/spec :auth/config)
+               :scopes (s/spec :auth/scopes))
   :ret string?)
 ;; TODO: pass in keystore filename instead of hardcoding it in @jetty-opts
-(defn get-code [clientid tenant scopes keystore-pass]
+(defn get-code [config scopes]
   (println (format "Running server to request credentials.\nPlease head over to %s" urls/auth-url))
-  (let [c           (async/chan)
-        the-handler (-> (partial handler
-                                 clientid
-                                 tenant
-                                 scopes
-                                 (partial carry-code c))
-                        ssl/wrap-hsts
-                        ssl/wrap-ssl-redirect)
-        opts        {:port         3000
-                     :ssl?         true
-                     :keystore     "keystore.jks"
-                     :key-password "todone"
-                     :join?        false}
-        s           (server/run-jetty the-handler opts)]
+  (let [{:keys [clientid
+                tenant
+                ssl-keystore
+                keystorepass]} config
+        c                      (async/chan)
+        the-handler            (-> (partial handler
+                                            clientid
+                                            tenant
+                                            scopes
+                                            (partial carry-code c))
+                                   ssl/wrap-hsts
+                                   ssl/wrap-ssl-redirect)
+        opts                   {:port         3000
+                                :ssl?         true
+                                :keystore     ssl-keystore
+                                :key-password keystorepass
+                                :join?        false}
+        s                      (server/run-jetty the-handler opts)]
     (reset! server-debug s)
     (code-from-channel c s)))
 
 (s/fdef get-tokens
-  :args (s/cat :config (s/spec :auth/config))
+  :args (s/alt :unary (s/cat :config (s/spec :auth/config))
+               :binary (s/cat :config (s/spec :auth/config)
+                              :cache (s/spec :projuctivity.cache.api/cache)))
   :ret (s/spec :auth/tokens))
-(defn get-tokens [config]
-  (let [{:keys [clientid client-secret tenant scopes keystorepass]
-         :or {client-secret ""}} config
-        all-scopes (conj scopes "offline_access")
-        code (get-code clientid tenant all-scopes keystorepass)]
-    (case code
-      "stop" (throw (ex-info "Auth process manually stopped." {}))
-      "error" (throw (ex-info "Auth process stopped due to an error." {}))
-      (do
-        (println "got code" code)
-        (cache-api/with-saved cache :tokens
-          (get-tokens-from-code code
-                                tenant
-                                clientid
-                                client-secret
-                                all-scopes))))))
+(defn get-tokens
+  ([config cache]
+   (let [{:keys [clientid
+                 client-secret
+                 tenant
+                 scopes]
+          :or   {client-secret ""}} config
+         all-scopes                 (conj scopes "offline_access")
+         code                       (get-code config scopes)]
+     (case code
+       "stop"  (throw (ex-info "Auth process manually stopped." {}))
+       "error" (throw (ex-info "Auth process stopped due to an error." {}))
+       (do
+         (println "got code" code)
+         (cache-api/with-saved cache :tokens
+           (get-tokens-from-code code
+                                 tenant
+                                 clientid
+                                 client-secret
+                                 all-scopes))))))
+  ([config]
+   (get-tokens config default-cache)))
 
 (s/fdef tokens
-  :args (s/cat :config (s/spec :auth/config))
+  :args (s/alt :unary (s/cat :config (s/spec :auth/config))
+               :binary (s/cat :config (s/spec :auth/config)
+                              :cache (s/spec :projuctivity.cache.api/cache)))
   :ret (s/spec :auth/token))
-(defn tokens [config]
-  (if-let [tokens-map (cache-api/retrieve cache :tokens)]
-    tokens-map
-    (get-tokens config)))
+(defn tokens
+  ([config cache]
+   (if-let [tokens-map (cache-api/retrieve cache :tokens)]
+     tokens-map
+     (get-tokens config)))
+  ([config]
+   (tokens config default-cache)))
 
 (s/fdef refresh-token
   :args (s/alt :unary (s/cat :config (s/spec :auth/config))
@@ -190,7 +205,7 @@
 (defn refresh-token
   ([config refresh-token]
    (let [{:keys [clientid tenant scopes]} config]
-     (cache-api/with-saved cache :tokens
+     (cache-api/with-saved default-cache :tokens
        (let [tokens (get-tokens-from-refresh-token refresh-token
                                                    tenant
                                                    clientid
