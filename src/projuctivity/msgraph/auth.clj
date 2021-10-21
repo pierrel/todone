@@ -183,9 +183,11 @@
   :ret (s/spec :auth/token))
 (defn tokens
   ([config cache]
-   (if-let [tokens-map (cache-api/retrieve cache :tokens)]
-     tokens-map
-     (get-tokens config)))
+   (let [tokens-map (cache-api/retrieve cache :tokens)]
+     (if (= :clojure.spec.alpha/invalid
+            (s/conform :auth/tokens tokens-map))
+       (get-tokens config)
+       tokens-map)))
   ([config]
    (tokens config default-cache)))
 
