@@ -19,7 +19,7 @@
 (s/def :projuctivity.cache.api/cache
   (s/with-gen (partial satisfies? Cache)
     ;; TODO: see if this always returns a NEW MemCache. If not then re-write
-    (gen/return (MemCache. (atom {})))))
+    #(gen/return (MemCache. (atom {})))))
 
 (defn with-saved
   "Saves `v` to `k` using the API and returns `v`"
