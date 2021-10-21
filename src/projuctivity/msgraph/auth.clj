@@ -131,11 +131,12 @@
                 tenant
                 ssl-keystore
                 keystorepass]} config
+        all-scopes             (conj scopes "offline_access")
         c                      (async/chan)
         the-handler            (-> (partial handler
                                             clientid
                                             tenant
-                                            scopes
+                                            all-scopes
                                             (partial carry-code c))
                                    ssl/wrap-hsts
                                    ssl/wrap-ssl-redirect)
