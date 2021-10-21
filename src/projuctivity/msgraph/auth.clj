@@ -161,7 +161,6 @@
                  tenant
                  scopes]
           :or   {client-secret ""}} config
-         all-scopes                 (conj scopes "offline_access")
          code                       (get-code config scopes)]
      (case code
        "stop"  (throw (ex-info "Auth process manually stopped." {}))
@@ -173,7 +172,7 @@
                                  tenant
                                  clientid
                                  client-secret
-                                 all-scopes))))))
+                                 scopes))))))
   ([config]
    (get-tokens config default-cache)))
 
