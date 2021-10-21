@@ -205,7 +205,7 @@
                                                    scopes)]
          (if (nil? (:refresh-token tokens))
            (assoc tokens :refresh-token refresh-token)
-           tokens)))
-     ([config]
-      (refresh-token config
-                     (:refresh-token (tokens config)))))))
+           tokens)))))
+  ([config]
+   (refresh-token config
+                  (:refresh-token (tokens config)))))
