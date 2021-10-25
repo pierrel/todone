@@ -3,6 +3,7 @@
             [projuctivity.msgraph.core :as core]
             [projuctivity.api :as api]))
 
+;; TODO: consolidate these with the config specs
 (s/def :projuctivity.msgraph.api/clientid string?)
 (s/def :projuctivity.msgraph.api/tenant string?)
 (s/def :projuctivity.msgraph.api/scope string?)

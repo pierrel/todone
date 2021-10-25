@@ -1,10 +1,10 @@
 (ns projuctivity.msgraph.core
-  (:require [projuctivity.request.api :as req-api]
+  (:require [projuctivity.msgraph.pure :as pure]
+            [projuctivity.request.api :as req-api]
             [projuctivity.request.core :as request]
             [clojure.spec.alpha :as s]
             [java-time :as t]
-            [projuctivity.msgraph.auth :as auth]
-            [projuctivity.msgraph.pure :as pure])
+            [projuctivity.msgraph.auth :as auth])
   (:import [projuctivity.request.core JSONService]))
 
 (def base-url "https://graph.microsoft.com")

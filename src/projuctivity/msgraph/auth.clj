@@ -6,6 +6,7 @@
             [clojure.core.async :as async]
             [ring.util.response :as resp]
             [ring.middleware.ssl :as ssl]
+            [ring.middleware.params :as params]
             [projuctivity.cache.api :as cache-api]
             [projuctivity.cache.file]
             [clojure.spec.alpha :as s]
@@ -13,10 +14,10 @@
   (:import [projuctivity.cache.file EDNFileCache]
            [projuctivity.request.core JSONService]))
 
-(s/def :auth/clientid string?)
-(s/def :auth/tenant string?)
-(s/def :auth/keystorepass string?)
-(s/def :auth/ssl-keystore string?)
+(s/def :auth/clientid :projuctivity.config/clientid)
+(s/def :auth/tenant :projuctivity.config/tenant)
+(s/def :auth/keystorepass :projuctivity.config/keystorepass)
+(s/def :auth/ssl-keystore :projuctivity.config/ssl-keystore)
 (s/def :auth/config (s/keys :req-un [:auth/clientid
                                      :auth/tenant
                                      :auth/keystorepass
@@ -48,8 +49,8 @@
 
 (defn handler [clientid tenant scopes f request]
   (try
-    (case (:uri request)
-      "/token"
+    (condp re-matches (:uri request)
+      #"/token(|/)"
       (if-let [code (last (re-matches #".*code=([^&]+).*$"
                                       (get request :query-string "")))]
         (do
@@ -58,20 +59,25 @@
       ;; TODO: implement error recovery: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow#error-response
         (resp/response "Could not get code. This endpoint should only be redirected-to by MS. Use /auth to get started."))
 
-      "/testing"
+      #"/testing(|/)"
       (resp/response "This is just a test")
 
-      "/stop"
+      #"/stop(|/)"
       (do
         (f "stop")
         (resp/response "Stopping"))
 
-      "/error"
+      #"/error(|/)"
       (throw (ex-info "Testing out the error handling."
                       {:source "error endpoint."}))
 
-      "/auth"
-      (let [dest (urls/ms-auth-url clientid tenant scopes)]
+      #"/auth(|/)"
+      (let [query (:params request)
+            dest (apply (if (= (get query "test")
+                               "true") ;; TODO make sure this works without test
+                          urls/test-auth-url
+                          urls/ms-auth-url )
+                        [clientid tenant scopes])]
         (resp/redirect dest))
 
       ;; default
@@ -139,7 +145,8 @@
                                             all-scopes
                                             (partial carry-code c))
                                    ssl/wrap-hsts
-                                   ssl/wrap-ssl-redirect)
+                                   ssl/wrap-ssl-redirect
+                                   params/wrap-params)
         opts                   {:port         3000
                                 :ssl?         true
                                 :keystore     ssl-keystore

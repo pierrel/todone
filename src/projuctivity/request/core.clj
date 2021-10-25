@@ -4,6 +4,11 @@
             [projuctivity.request.api :as api]
             [clojure.string :as str]))
 
+(def injected (atom nil))
+(defn inject-handler! [fn]
+  "Uses fn instead of the default implementation."
+  (reset! injected fn))
+
 (defn body?
  "Checks whether this is a JSON body.
   Mostly for use with validating responses with spec."
@@ -41,19 +46,25 @@
   "Makes a request using `method` to
   `hostname`/`resource` with `params`."
   [method hostname resource params]
-  (try
-    (let [url (format "%s/%s"
-                      (sanitize-hostname hostname)
-                      (sanitize-resource resource))
-          resp  (method url params)]
-      (json/parse-string (:body resp)))
-    (catch Exception e
-      (println (ex-data e))
-      (throw e))))
+  (if @injected
+    (@injected method hostname resource params)
+    (try
+      (let [method-fn (case method
+                        :get http/get
+                        :post http/post
+                        http/get)
+            url (format "%s/%s"
+                        (sanitize-hostname hostname)
+                        (sanitize-resource resource))
+            resp  (method-fn url params)]
+        (json/parse-string (:body resp)))
+      (catch Exception e
+        (println (ex-data e))
+        (throw e)))))
 
 (defrecord JSONService [hostname]
   api/HTTPRequest
   (get [service resource params]
-    (inner-request http/get (:hostname service) resource params))
+    (inner-request :get (:hostname service) resource params))
   (post [service resource params]
-    (inner-request http/post (:hostname service) resource params)))
+    (inner-request :post (:hostname service) resource params)))

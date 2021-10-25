@@ -1,7 +1,7 @@
 (ns projuctivity.core
-  (:require [projuctivity.msgraph.api :as ms]
+  (:require [projuctivity.config :as config]
+            [projuctivity.msgraph.api :as ms]
             [projuctivity.api :as api]
-            [projuctivity.config :as config]
             [projuctivity.core.pure :as pure]
             [clojure.spec.alpha :as s]
             [projuctivity.models :as models])

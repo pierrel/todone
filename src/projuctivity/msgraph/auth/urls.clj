@@ -6,6 +6,10 @@
   (:import [java.net InetAddress]))
 
 (s/def :auth/scopes (s/coll-of string?))
+(s/def :projuctivity.msgraph.auth.urls/auth-url-args
+  (s/cat :clientid string?
+         :tenant string?
+         :scopes (s/spec :auth/scopes)))
 
 (def redirect-path "/token")
 (def auth-path "/auth")
@@ -60,15 +64,20 @@
 (comment
   (query-string "haha" ["one" "troe"]))
 (s/fdef ms-auth-url
-  :args (s/cat :clientid string?
-               :tenant string?
-               :scopes (s/spec :auth/scopes))
+  :args :projuctivity.msgraph.auth.urls/auth-url-args
   :ret string?)
 (defn ms-auth-url [clientid tenant scopes]
   (format "%s?%s"
           (ms-auth-endpoint tenant)
           (query-string clientid scopes)))
 
+(s/fdef test-auth-url
+  :args :projuctivity.msgraph.auth.urls/auth-url-args
+  :ret string?)
+(defn test-auth-url [clientid tenant scopes]
+  (format "http://%s:3001?%s"
+          (public-hostname)
+          (query-string clientid scopes)))
 (defn token-request-params [code tenant clientid client-secret scopes refresh?]
   (let [url (format "/%s/oauth2/v2.0/token"
                     tenant)
