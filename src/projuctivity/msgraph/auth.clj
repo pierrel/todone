@@ -115,10 +115,12 @@
                :clientid string?
                :scopes (s/spec :auth/scopes))
   :ret (s/spec :auth/tokens))
-(defn get-tokens-from-refresh-token [refresh-token tenant clientid scopes]
+(defn get-tokens-from-refresh-token
+  [refresh-token tenant clientid client-secret scopes]
   (let [{:keys [url params]} (urls/token-request-params refresh-token
                                                         tenant
                                                         clientid
+                                                        client-secret
                                                         scopes
                                                         true)]
     (urls/tokens-from-token-response
@@ -205,11 +207,12 @@
   :ret (s/spec :auth/tokens))
 (defn refresh-token
   ([config refresh-token]
-   (let [{:keys [clientid tenant scopes]} config]
+   (let [{:keys [clientid client-secret tenant scopes]} config]
      (cache-api/with-saved default-cache :tokens
        (let [tokens (get-tokens-from-refresh-token refresh-token
                                                    tenant
                                                    clientid
+                                                   client-secret
                                                    scopes)]
          (if (nil? (:refresh-token tokens))
            (assoc tokens :refresh-token refresh-token)
