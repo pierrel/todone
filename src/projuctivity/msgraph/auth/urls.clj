@@ -61,8 +61,7 @@
                                 (name k)
                                 (codec/url-encode v)))
                       params))))
-(comment
-  (query-string "haha" ["one" "troe"]))
+
 (s/fdef ms-auth-url
   :args :projuctivity.msgraph.auth.urls/auth-url-args
   :ret string?)
