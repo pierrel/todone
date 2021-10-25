@@ -54,14 +54,14 @@
   [url]
   (try
     (http/get (format "%s/auth" url)
-               {:query-params {:test true}
-                :insecure? true})
+              {:query-params {:test true}
+               :insecure? true})
     (catch Exception e
       (println "Got exception when requesting auth endpoit from test" e)
       (throw e))))
 
 (t/deftest get-tokenss
- (let [config (-> :auth/config s/gen gen/generate)
+  (let [config (-> :auth/config s/gen gen/generate)
         cache (TestCache.)
         expected-tokens (-> :auth/tokens s/gen gen/generate)
         code (-> (s/and string?
@@ -77,7 +77,7 @@
         keystore-path (:ssl-keystore config)
         keystore-pass (:keystorepass config)]
     (projuctivity.request.core/inject-handler! (partial ms-code-handler
-                                                expected-tokens))
+                                                        expected-tokens))
     (println (create-keystore keystore-path keystore-pass))
     (let [c (async/thread (sut/get-tokens config cache))
           _ (Thread/sleep 5000) ;; let the server start up
