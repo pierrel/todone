@@ -1,4 +1,13 @@
-This is how I generated the keystore that allowed me to run jetty in https
+# Secure
+To run this locally, use [mkcert](This is how to run this locally so that your browser).
+
+1. `brew install mkcert`
+2. `mkcert -install`
+3. `mkcert -pkcs12 localhost` - Or the name of the local host
+
+
+# Insecure
+This only works when you're making an explicitly-insecure server. This is used in testing. This will not work with many browsers.
 
 $ keytool -genkey -keystore keystore.jks -alias ssl -keyalg RSA -sigalg SHA256withRSA -validity 365 -keysize 2048
 

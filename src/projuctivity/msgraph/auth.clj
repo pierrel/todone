@@ -149,11 +149,15 @@
                                    ssl/wrap-hsts
                                    ssl/wrap-ssl-redirect
                                    params/wrap-params)
-        opts                   {:port         3000
-                                :ssl?         true
-                                :keystore     ssl-keystore
-                                :key-password keystorepass
-                                :join?        false}
+        opts                   {:port          3000
+                                :ssl?          true
+                                :keystore      ssl-keystore
+                                :key-password  keystorepass
+                                :keystore-type (if (re-matches #".*\.p12$"
+                                                               ssl-keystore)
+                                                 "pkcs12"
+                                                 "jks")
+                                :join?         false}
         s                      (server/run-jetty the-handler opts)]
     (reset! server-debug s)
     (code-from-channel c s)))
