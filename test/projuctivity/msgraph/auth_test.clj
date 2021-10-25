@@ -14,14 +14,19 @@
             [ring.util.response :as resp]
             [ring.adapter.jetty :as server]))
 
-(def saved-server (atom nil))
+(defrecord TestCache []
+  cache-api/Cache
+  (place [cache k v]
+    nil)
+  (retrieve [cache k]
+    nil))
 
 (defn ms-auth-handler [local-base-url code request]
   (resp/redirect (format "%s/token?code=%s" local-base-url code)))
 
 (defn ms-code-handler [tokens method hostname resource params]
   (if (and (= "https://login.microsoftonline.com" hostname)
-           (re-matches #".*/oauth/v2.0/token.*" resource))
+           (re-matches #".*/oauth2/v2.0/token.*" resource))
     {"access_token" (:token tokens)
      "refresh_token" (:refresh-token tokens)}
     (throw (ex-info "ms-code-handler called with wrong params"
@@ -42,34 +47,14 @@
                            "-storepass" pass
                            "-keypass" pass)))
 
-(defn doitall []
-  (let [config (-> :auth/config s/gen gen/generate)
-        cache (-> :projuctivity.cache.api/cache s/gen gen/generate)
-        expected-tokens (-> :auth/tokens s/gen gen/generate)
-        code (-> string? s/gen gen/generate)
-        server-url (urls/base-url)
-        ms-auth-server (server/run-jetty (partial ms-auth-handler
-                                                  server-url
-                                                  code)
-                                         {:port 3001
-                                          :join? false})
-        keystore-path (:ssl-keystore config)
-        keystore-pass (:keystorepass config)]
-    (reset! saved-server ms-auth-server) ;; for debugging
-    (projuctivity.request.core/inject-handler! (partial ms-code-handler
-                                                expected-tokens))
-    (println (create-keystore keystore-path keystore-pass))
-    (let [c (async/thread (sut/get-tokens config cache))
-          _ (Thread/sleep 2000) ;; let the server start up
-          response (http/get (format "%s/auth" server-url)
-                             {:query-params {:test true}
-                              :insecure? true})
-          auth-ret (:body response)]
-      (let [received-tokens (async/<!! c)]
-        (projuctivity.request.core/inject-handler! nil)
-        (.stop ms-auth-server)
-        (clojure.java.io/delete-file keystore-path true)
-        [received-tokens expected-tokens auth-ret]))))
+(defn auth-request [url]
+  (try
+    (http/get (format "%s/auth" url)
+               {:query-params {:test true}
+                :insecure? true})
+    (catch Exception e
+      (println "Got exception when requesting auth endpoit from test" e)
+      (throw e))))
 
 (comment
   ;; test it
@@ -87,7 +72,30 @@
     "nothing"))
 
 (t/deftest get-tokenss
-  (let [[c expected-tokens ms-auth-server] (doitall)
-        received-tokens (async/<!! c)]
-    (.stop ms-auth-server)
-    (t/is (= expected-tokens received-tokens))))
+ (let [config (-> :auth/config s/gen gen/generate)
+        cache (TestCache.)
+        expected-tokens (-> :auth/tokens s/gen gen/generate)
+        code (-> (s/and string?
+                        (complement clojure.string/blank?))
+                 s/gen
+                 gen/generate)
+        server-url (urls/base-url)
+        ms-auth-server (server/run-jetty (partial ms-auth-handler
+                                                  server-url
+                                                  code)
+                                         {:port 3001
+                                          :join? false})
+        keystore-path (:ssl-keystore config)
+        keystore-pass (:keystorepass config)]
+    (projuctivity.request.core/inject-handler! (partial ms-code-handler
+                                                expected-tokens))
+    (println (create-keystore keystore-path keystore-pass))
+    (let [c (async/thread (sut/get-tokens config cache))
+          _ (Thread/sleep 5000) ;; let the server start up
+          response (auth-request server-url)
+          auth-ret (:body response)]
+      (let [received-tokens (async/<!! c)]
+        (projuctivity.request.core/inject-handler! nil)
+        (.stop ms-auth-server)
+        (clojure.java.io/delete-file keystore-path true)
+        (t/is (= expected-tokens received-tokens))))))

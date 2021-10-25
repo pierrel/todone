@@ -24,8 +24,8 @@
                                      :auth/ssl-keystore
                                      :auth/scopes]))
 
-(s/def :auth/token string?)
-(s/def :auth/refresh-token string?)
+(s/def :auth/token :projuctivity.config/non-empty-string)
+(s/def :auth/refresh-token :projuctivity.config/non-empty-string)
 (s/def :auth/tokens (s/keys :req-un [:auth/token :auth/refresh-token]))
 
 (def default-cache (EDNFileCache. ".msgraph-cache.edn"))

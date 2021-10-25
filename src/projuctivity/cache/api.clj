@@ -7,14 +7,14 @@
   (place [cache k v] "Set the `cache` key `k` to v")
   (retrieve [cache k] "Get the value for `k` from `cache`"))
 
+;; TODO: Make this work.
 (defrecord MemCache [mem]
   Cache
   (place [cache k v]
     (let [m (:mem cache)]
-      (reset! m
-              (assoc m k v))))
+      (reset! m (assoc @m k v))))
   (retrieve [cache k]
-    (-> cache :mem k)))
+    (-> cache :mem deref k)))
 
 (s/def :projuctivity.cache.api/cache
   (s/with-gen (partial satisfies? Cache)
