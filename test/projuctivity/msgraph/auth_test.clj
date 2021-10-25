@@ -28,7 +28,7 @@
 (defn ms-code-handler [tokens method hostname resource params]
   (if (and (= "https://login.microsoftonline.com" hostname)
            (re-matches #".*/oauth2/v2.0/token.*" resource))
-    {"access_token" (:token tokens)
+    {"access_token"  (:token tokens)
      "refresh_token" (:refresh-token tokens)}
     (throw (ex-info "ms-code-handler called with wrong params"
                     {:called-hostname hostname
@@ -55,32 +55,32 @@
   (try
     (http/get (format "%s/auth" url)
               {:query-params {:test true}
-               :insecure? true})
+               :insecure?    true})
     (catch Exception e
       (println "Got exception when requesting auth endpoit from test" e)
       (throw e))))
 
 (t/deftest get-tokenss
-  (let [config (-> :auth/config s/gen gen/generate)
-        cache (TestCache.)
+  (let [config          (-> :auth/config s/gen gen/generate)
+        cache           (TestCache.)
         expected-tokens (-> :auth/tokens s/gen gen/generate)
-        code (-> (s/and string?
-                        (complement clojure.string/blank?))
-                 s/gen
-                 gen/generate)
-        server-url (urls/base-url)
-        ms-auth-server (server/run-jetty (partial ms-auth-handler
-                                                  server-url
-                                                  code)
-                                         {:port 3001
-                                          :join? false})
-        keystore-path (:ssl-keystore config)
-        keystore-pass (:keystorepass config)]
+        code            (-> (s/and string?
+                                   (complement clojure.string/blank?))
+                            s/gen
+                            gen/generate)
+        server-url      (urls/base-url)
+        ms-auth-server  (server/run-jetty (partial ms-auth-handler
+                                                   server-url
+                                                   code)
+                                          {:port  3001
+                                           :join? false})
+        keystore-path   (:ssl-keystore config)
+        keystore-pass   (:keystorepass config)]
     (projuctivity.request.core/inject-handler! (partial ms-code-handler
                                                         expected-tokens))
     (println (create-keystore keystore-path keystore-pass))
-    (let [c (async/thread (sut/get-tokens config cache))
-          _ (Thread/sleep 5000) ;; let the server start up
+    (let [c        (async/thread (sut/get-tokens config cache))
+          _        (Thread/sleep 5000) ;; let the server start up
           response (auth-request server-url)
           auth-ret (:body response)]
       (let [received-tokens (async/<!! c)]
