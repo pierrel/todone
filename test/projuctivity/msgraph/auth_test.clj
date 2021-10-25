@@ -47,7 +47,10 @@
                            "-storepass" pass
                            "-keypass" pass)))
 
-(defn auth-request [url]
+(defn auth-request
+  "Handling the request to auth endpoint.
+  Should do things like retry and the like"
+  [url]
   (try
     (http/get (format "%s/auth" url)
                {:query-params {:test true}
@@ -55,21 +58,6 @@
     (catch Exception e
       (println "Got exception when requesting auth endpoit from test" e)
       (throw e))))
-
-(comment
-  ;; test it
-  (let [[received-tokens expected-tokens auth-ret] (doitall)]
-    (.stop @projuctivity.msgraph.auth/server-debug)
-    (.stop @saved-server)
-    (println "GOT THIS" received-tokens expected-tokens auth-ret))
-
-  (do
-    (.stop @projuctivity.msgraph.auth/server-debug)
-    (.stop @saved-server))
-
-  (condp re-matches "/auth/"
-    #"/auth(|/)" "got it"
-    "nothing"))
 
 (t/deftest get-tokenss
  (let [config (-> :auth/config s/gen gen/generate)
