@@ -8,6 +8,7 @@
             [projuctivity.cache.api :as cache-api]
             [clojure.spec.gen.alpha :as gen]
             [clojure.spec.alpha :as s]
+            [clojure.java.shell :as shell]
             [helper :as helper]
             [clojure.core.async :as async]
             [projuctivity.config :as config]
@@ -35,17 +36,17 @@
 
 (defn create-keystore [path pass]
   (let [dname "CN=localhost, OU=ID, O=IBM, L=Hursley, S=Hants, C=GB"]
-    (clojure.java.shell/sh "keytool"
-                           "-genkey"
-                           "-noprompt"
-                           "-dname" dname
-                           "-alias" "ssl"
-                           "-keyalg" "RSA"
-                           "-sigalg" "SHA256withRSA"
-                           "-validity" "365"
-                           "-keystore" path
-                           "-storepass" pass
-                           "-keypass" pass)))
+    (shell/sh "keytool"
+              "-genkey"
+              "-noprompt"
+              "-dname" dname
+              "-alias" "ssl"
+              "-keyalg" "RSA"
+              "-sigalg" "SHA256withRSA"
+              "-validity" "365"
+              "-keystore" path
+              "-storepass" pass
+              "-keypass" pass)))
 
 (defn auth-request
   "Handling the request to auth endpoint.
