@@ -1,53 +1,39 @@
 (ns projuctivity.msgraph.auth
   "Auth workflows."
   (:require [ring.adapter.jetty :as server]
-            [projuctivity.msgraph.utils :as utils]
-            [clojure.java.io :as io]
+            [projuctivity.request.api :as request-api]
+            [projuctivity.request.core :as request]
             [clojure.core.async :as async]
             [ring.util.response :as resp]
-            [clj-http.client :as http]
+            [ring.middleware.ssl :as ssl]
+            [ring.middleware.params :as params]
+            [projuctivity.cache.api :as cache-api]
+            [projuctivity.cache.file]
             [clojure.spec.alpha :as s]
-            [projuctivity.msgraph.auth.urls :as urls]))
+            [projuctivity.msgraph.auth.urls :as urls])
+  (:import [projuctivity.cache.file EDNFileCache]
+           [projuctivity.request.core JSONService]))
 
-(s/def :auth/clientid string?)
-(s/def :auth/tenant string?)
-(s/def :auth/keystorepass string?)
-(s/def :auth/ssl-keystore string?)
+(s/def :auth/clientid :projuctivity.config/clientid)
+(s/def :auth/tenant :projuctivity.config/tenant)
+(s/def :auth/keystorepass :projuctivity.config/keystorepass)
+(s/def :auth/ssl-keystore :projuctivity.config/ssl-keystore)
 (s/def :auth/config (s/keys :req-un [:auth/clientid
                                      :auth/tenant
                                      :auth/keystorepass
                                      :auth/ssl-keystore
                                      :auth/scopes]))
 
-(s/def :auth/token string?)
-(s/def :auth/refresh-token string?)
+(s/def :auth/token :projuctivity.config/non-empty-string)
+(s/def :auth/refresh-token :projuctivity.config/non-empty-string)
 (s/def :auth/tokens (s/keys :req-un [:auth/token :auth/refresh-token]))
 
-(def tokens-filename ".msgraph-tokens.edn")
+(def default-cache (EDNFileCache. ".msgraph-cache.edn"))
+(def service (JSONService. "https://login.microsoftonline.com"))
 
 (defonce server-debug (atom nil))
 
-(defn- with-saved
-  "Saves the content to the temp file and returns the content."
-  [filename content]
-  (utils/save-edn filename content)
-  content)
-
-(defn jetty-opts [keystore-pass]
-  {:port urls/port
-   :join? false
-   :ssl? true
-   :ssl-port 4003
-   :key-password keystore-pass
-   :keystore "keystore.jks"})
-
 (s/fdef code-from-channel
-  :args (s/cat :channel (s/and (partial instance?
-                                        clojure.core.async.impl.protocols/Channel)
-                               (partial instance?
-                                        clojure.core.async.impl.protocols/ReadPort))
-               :server (partial instance?
-                                org.eclipse.jetty.util.component.LifeCycle))
   :ret string?)
 (defn- code-from-channel
   "Waits for the code to be passed to the channel.
@@ -63,29 +49,39 @@
 
 (defn handler [clientid tenant scopes f request]
   (try
-    (case (:uri request)
-      "/token"
+    (condp re-matches (:uri request)
+      #"/token(|/)"
       (if-let [code (last (re-matches #".*code=([^&]+).*$"
                                       (get request :query-string "")))]
-        (f code)
+        (do
+          (f code)
+          (resp/response "Authorization complete, you can now close this browser tab/window."))
       ;; TODO: implement error recovery: https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow#error-response
         (resp/response "Could not get code. This endpoint should only be redirected-to by MS. Use /auth to get started."))
 
-      "/testing"
+      #"/testing(|/)"
       (resp/response "This is just a test")
 
-      "/stop"
+      #"/stop(|/)"
       (do
         (f "stop")
         (resp/response "Stopping"))
 
-      "/error"
+      #"/error(|/)"
       (throw (ex-info "Testing out the error handling."
                       {:source "error endpoint."}))
 
-    ;; default
-      (let [dest (urls/ms-auth-url clientid tenant scopes)]
-        (resp/redirect dest)))
+      #"/auth(|/)"
+      (let [query (:params request)
+            dest (apply (if (= (get query "test")
+                               "true") ;; TODO make sure this works without test
+                          urls/test-auth-url
+                          urls/ms-auth-url )
+                        [clientid tenant scopes])]
+        (resp/redirect dest))
+
+      ;; default
+      (resp/response "Please go to /auth for authentication or /stop to stop the server."))
 
     ;; Let the channel know there was an error
     (catch RuntimeException e
@@ -96,19 +92,22 @@
   :args (s/cat :code string?
                :tenant string?
                :clientid string?
+               :client-secret string?
                :scopes (s/spec :auth/scopes))
   :ret (s/spec :auth/tokens))
-(defn get-tokens-from-code [code tenant clientid scopes]
+(defn get-tokens-from-code [code tenant clientid client-secret scopes]
   (let [{:keys [url params]} (urls/token-request-params code
                                                         tenant
                                                         clientid
+                                                        client-secret
                                                         scopes
                                                         false)]
     (urls/tokens-from-token-response
-     (http/post url
-                {:accept :json
-                 :content-type :application/x-www-form-urlencoded
-                 :form-params params}))))
+     (request-api/post service
+                       url
+                       {:accept :json
+                        :content-type :application/x-www-form-urlencoded
+                        :form-params params}))))
 
 (s/fdef get-tokens-from-refresh-token
   :args (s/cat :refresh-token string?
@@ -123,54 +122,81 @@
                                                         scopes
                                                         true)]
     (urls/tokens-from-token-response
-     (http/post url
-                {:accept :json
-                 :content-type :application/x-www-form-urlencoded
-                 :form-params params}))))
+     (request-api/post service
+                       url
+                       {:accept :json
+                        :content-type :application/x-www-form-urlencoded
+                        :form-params params}))))
 (s/fdef get-code
-  :args (s/cat :clientid string?
-               :tenant string?
-               :scopes (s/spec :auth/scopes)
-               :keystore-pass string?)
+  :args (s/cat :config (s/spec :auth/config)
+               :scopes (s/spec :auth/scopes))
   :ret string?)
-;; TODO: pass in keystore filename instead of hardcoding it in @jetty-opts
-(defn get-code [clientid tenant scopes keystore-pass]
+(defn get-code [config scopes]
   (println (format "Running server to request credentials.\nPlease head over to %s" urls/auth-url))
-  (let [c (async/chan)
-        s (server/run-jetty (partial handler
-                                     clientid
-                                     tenant
-                                     scopes
-                                     (partial carry-code c))
-                            (jetty-opts keystore-pass))]
+  (let [{:keys [clientid
+                tenant
+                ssl-keystore
+                keystorepass]} config
+        all-scopes             (conj scopes "offline_access")
+        c                      (async/chan)
+        the-handler            (-> (partial handler
+                                            clientid
+                                            tenant
+                                            all-scopes
+                                            (partial carry-code c))
+                                   ssl/wrap-hsts
+                                   ssl/wrap-ssl-redirect
+                                   params/wrap-params)
+        opts                   {:port         3000
+                                :ssl?         true
+                                :keystore     ssl-keystore
+                                :key-password keystorepass
+                                :join?        false}
+        s                      (server/run-jetty the-handler opts)]
     (reset! server-debug s)
     (code-from-channel c s)))
 
 (s/fdef get-tokens
-  :args (s/cat :config (s/spec :auth/config))
+  :args (s/alt :unary (s/cat :config (s/spec :auth/config))
+               :binary (s/cat :config (s/spec :auth/config)
+                              :cache (s/spec :projuctivity.cache.api/cache)))
   :ret (s/spec :auth/tokens))
-(defn get-tokens [config]
-  (let [{:keys [clientid tenant scopes keystorepass]} config
-        all-scopes (conj scopes "offline_access")
-        code (get-code clientid tenant all-scopes keystorepass)]
-    (case code
-      "stop" (throw (ex-info "Auth process manually stopped." {}))
-      "error" (throw (ex-info "Auth process stopped due to an error." {}))
-      (do
-        (println "got code" code)
-        (with-saved tokens-filename
-          (get-tokens-from-code code
-                                tenant
-                                clientid
-                                all-scopes))))))
+(defn get-tokens
+  ([config cache]
+   (let [{:keys [clientid
+                 client-secret
+                 tenant
+                 scopes]
+          :or   {client-secret ""}} config
+         code                       (get-code config scopes)]
+     (case code
+       "stop"  (throw (ex-info "Auth process manually stopped." {}))
+       "error" (throw (ex-info "Auth process stopped due to an error." {}))
+       (do
+         (println "got code" code)
+         (cache-api/with-saved cache :tokens
+           (get-tokens-from-code code
+                                 tenant
+                                 clientid
+                                 client-secret
+                                 scopes))))))
+  ([config]
+   (get-tokens config default-cache)))
 
 (s/fdef tokens
-  :args (s/cat :config (s/spec :auth/config))
+  :args (s/alt :unary (s/cat :config (s/spec :auth/config))
+               :binary (s/cat :config (s/spec :auth/config)
+                              :cache (s/spec :projuctivity.cache.api/cache)))
   :ret (s/spec :auth/token))
-(defn tokens [config]
-  (if (.exists (io/file tokens-filename))
-    (utils/load-edn tokens-filename)
-    (get-tokens config)))
+(defn tokens
+  ([config cache]
+   (let [tokens-map (cache-api/retrieve cache :tokens)]
+     (if (= :clojure.spec.alpha/invalid
+            (s/conform :auth/tokens tokens-map))
+       (get-tokens config)
+       tokens-map)))
+  ([config]
+   (tokens config default-cache)))
 
 (s/fdef refresh-token
   :args (s/alt :unary (s/cat :config (s/spec :auth/config))
@@ -180,7 +206,7 @@
 (defn refresh-token
   ([config refresh-token]
    (let [{:keys [clientid tenant scopes]} config]
-     (with-saved tokens-filename
+     (cache-api/with-saved default-cache :tokens
        (let [tokens (get-tokens-from-refresh-token refresh-token
                                                    tenant
                                                    clientid

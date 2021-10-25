@@ -2,15 +2,20 @@
   "URLs related to authentication"
   (:require [ring.util.codec :as codec]
             [clojure.string :as string]
-            [clojure.spec.alpha :as s]
-            [cheshire.core :as json])
-  (:import (java.net InetAddress)))
+            [clojure.spec.alpha :as s])
+  (:import [java.net InetAddress]))
 
 (s/def :auth/scopes (s/coll-of string?))
+(s/def :projuctivity.msgraph.auth.urls/auth-url-args
+  (s/cat :clientid string?
+         :tenant string?
+         :scopes (s/spec :auth/scopes)))
 
 (def redirect-path "/token")
 (def auth-path "/auth")
 (def port 3000)
+(def on-device-hostname
+  (.getHostName (InetAddress/getLocalHost)))
 
 (defn is-codespaces? [hostname]
   (-> (re-matches #"^codespaces.*" hostname) nil? not))
@@ -20,20 +25,16 @@
           (get (System/getenv) "CODESPACE_NAME")
           (str port)))
 
-(def on-device-hostname (.getHostName (InetAddress/getLocalHost)))
-
-(def public-hostname
+(defn public-hostname []
   (if (is-codespaces? on-device-hostname)
     (codespace-url)
     on-device-hostname))
 
-(def base-url (format "https://%s%s" public-hostname
-                      (if (is-codespaces? on-device-hostname)
-                        ""
-                        (str ":" port))))
+(defn base-url []
+  (format "https://%s" (public-hostname)))
 
-(def redirect-url (format "%s%s" base-url redirect-path))
-(def auth-url (format "%s%s" base-url auth-path))
+(def redirect-url (format "%s%s" (base-url) redirect-path))
+(def auth-url (format "%s%s" (base-url) auth-path))
 
 (s/fdef ms-auth-endpoint
   :args (s/cat :tenant string?)
@@ -60,28 +61,36 @@
                                 (name k)
                                 (codec/url-encode v)))
                       params))))
-(comment
-  (query-string "haha" ["one" "troe"]))
+
 (s/fdef ms-auth-url
-  :args (s/cat :clientid string?
-               :tenant string?
-               :scopes (s/spec :auth/scopes))
+  :args :projuctivity.msgraph.auth.urls/auth-url-args
   :ret string?)
 (defn ms-auth-url [clientid tenant scopes]
   (format "%s?%s"
           (ms-auth-endpoint tenant)
           (query-string clientid scopes)))
 
-(defn token-request-params [code tenant clientid scopes refresh?]
-  (let [url (format "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+(s/fdef test-auth-url
+  :args :projuctivity.msgraph.auth.urls/auth-url-args
+  :ret string?)
+(defn test-auth-url [clientid tenant scopes]
+  (format "http://%s:3001?%s"
+          (public-hostname)
+          (query-string clientid scopes)))
+(defn token-request-params [code tenant clientid client-secret scopes refresh?]
+  (let [url (format "/%s/oauth2/v2.0/token"
                     tenant)
         scope (string/join " "
                            (filter (partial not= "offline_access")
                                    (map string/lower-case
                                         scopes)))
-        base-params {:client_id clientid
-                     :scope scope
-                     :redirect_uri redirect-url}]
+        secret (if (string/blank? client-secret)
+                 {}
+                 {:client_secret client-secret})
+        base-params (merge {:client_id clientid
+                            :scope scope
+                            :redirect_uri redirect-url}
+                           secret)]
     {:url url
      :params (merge base-params
                     (if refresh?
@@ -90,7 +99,6 @@
                       {:grant_type "authorization_code"
                        :code code}))}))
 
-(defn tokens-from-token-response [resp]
-  (let [body (json/parse-string (:body resp))]
-    {:token (get body "access_token")
-     :refresh-token (get body "refresh_token")}))
+(defn tokens-from-token-response [body]
+  {:token (get body "access_token")
+   :refresh-token (get body "refresh_token")})

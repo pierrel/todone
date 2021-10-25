@@ -1,5 +1,6 @@
 (ns projuctivity.msgraph.utils)
 
+;; TODO: Move this up one level out of msgraph
 
 (defn load-edn
   "Load edn from an io/reader source (filename or io/resource)."

@@ -5,6 +5,17 @@
             [clojure.spec.alpha :as s]
             [cheshire.core :as json]))
 
+(s/fdef config-params
+  :args (s/cat :config :projuctivity.msgraph.api/config)
+  :ret map?)
+(defn config-params
+  "Takes the config and turns them into necessary query params."
+  [config]
+  (into {}
+        (for [[k v] (select-keys config [:client-secret])]
+          [(clojure.string/replace (name k) "-" "_")
+           v])))
+
 (defn event-time-str
   "Takes a `key` and ms calendar event map `m` and returns the time string."
   [key m]

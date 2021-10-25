@@ -1,45 +1,37 @@
 (ns projuctivity.msgraph.core
-  (:require [clj-http.client :as http]
-            [cheshire.core :as json]
+  (:require [projuctivity.msgraph.pure :as pure]
+            [projuctivity.request.api :as req-api]
+            [projuctivity.request.core :as request]
             [clojure.spec.alpha :as s]
             [java-time :as t]
-            [projuctivity.msgraph.auth :as auth]
-            [projuctivity.msgraph.pure :as pure]))
+            [projuctivity.msgraph.auth :as auth])
+  (:import [projuctivity.request.core JSONService]))
 
 (def base-url "https://graph.microsoft.com")
+(def service (JSONService. base-url))
 
-(defn contains-base? [url]
-  (re-matches #"^https.*" url))
+(defn- has-version? [resource]
+  (re-find #"v\d+\.\d+/" resource))
 
 (s/def :msgraph/body (s/with-gen
                        (s/and string?
-                              #(try
-                                 (json/parse-string %)
-                                 true
-                                 (catch com.fasterxml.jackson.core.JsonParseException ex
-                                   false)
-                                 (finally false)))
+                              request/body?)
                        #(s/gen #{"{}"
                                  "{'hello': 'there'}"})))
-(s/def :msgraph/response (s/keys :req-un [:msgraph/body]))
-
-(s/fdef httpget
-  :args (s/cat :url string?
-               :params map?)
-  :ret (s/spec :msgraph/response))
-(def httpget http/get)
+(s/def :projuctivity.msgraph/resource (s/and string?
+                                has-version?))
 
 (defn auth [config]
   (auth/refresh-token config))
 
 (s/fdef get-resource
   :args (s/alt :binary (s/cat :config :projuctivity.msgraph.api/config
-                              :resource string?)
+                              :resource :projuctivity.msgraph/resource)
                :trinary (s/cat :config :projuctivity.msgraph.api/config
-                               :resource string?
+                               :resource :projuctivity.msgraph/resource
                                :params map?)
                :quaternary (s/cat :config :projuctivity.msgraph.api/config
-                                  :resource string?
+                                  :resource :projuctivity.msgraph/resource
                                   :params map?
                                   :token string?))
   :ret map?)
@@ -47,13 +39,10 @@
   "Sends a GET request to the desired resource with parameters and token."
   ([config resource params token]
    (try
-     (let [url (if (contains-base? resource)
-                 resource
-                 (format "%s/v1.0/%s" base-url resource))
-           params {:headers {:authorization (format "Bearer %s" token)}
-                   :query-params params}
-           resp (httpget url params)]
-       (json/parse-string (:body resp)))
+     (let [req-params {:headers {:authorization (format "Bearer %s" token)}
+                       :query-params (merge params
+                                            (pure/config-params config))}]
+       (req-api/get service resource req-params))
      (catch Exception e
        (if (= (:status (ex-data e)) 401)
          (do
@@ -74,7 +63,7 @@
                       (map str
                            (sort t/before? [d1 d2])))
          resp (get-resource config
-                            "me/calendarview"
+                            "v1.0/me/calendarview"
                             args)
          values (get resp "value")
          thenext (get resp "@odata.nextLink")]
