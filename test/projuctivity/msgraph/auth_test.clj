@@ -15,7 +15,7 @@
             [ring.util.response :as resp]
             [ring.adapter.jetty :as server]))
 
-(defrecord TestCache []
+(defrecord NoOpCache []
   cache-api/Cache
   (place [cache k v]
     nil)
@@ -73,9 +73,9 @@
       (println "Got exception when requesting auth endpoit from test" e)
       (throw e))))
 
-(t/deftest get-tokenss
+(t/deftest get-tokens
   (let [config          (-> :auth/config s/gen gen/generate)
-        cache           (TestCache.)
+        cache           (NoOpCache.)
         expected-tokens (-> :auth/tokens s/gen gen/generate)
         code            (-> (s/and string?
                                    (complement clojure.string/blank?))
