@@ -22,6 +22,19 @@
   (retrieve [cache k]
     nil))
 
+(defn token-refresh-handler
+  [tenant refresh-token new-tokens method hostname resource params]
+  (if (and (= "https://login.microsoftonline.com" hostname)
+           (re-matches #".*/oauth2/v2.0/token"
+                       resource)
+           (= refresh-token
+              (-> params :form-params :refresh_token)))
+    {"access_token" (:token new-tokens)
+     "refresh_token" (:refresh-token new-tokens)}
+    (throw (ex-info "token-refresh-handler called with wrong params"
+                    {:called-hostname hostname
+                     :called-resource resource}))))
+
 (defn ms-auth-handler [local-base-url code request]
   (resp/redirect (format "%s/token?code=%s" local-base-url code)))
 
@@ -88,3 +101,17 @@
         (.stop ms-auth-server)
         (clojure.java.io/delete-file keystore-path true)
         (t/is (= expected-tokens received-tokens))))))
+
+(t/deftest refresh-token
+  (let [config (-> :auth/config s/gen gen/generate)
+        old-tokens (-> :auth/tokens s/gen gen/generate)
+        refresh-token (:refresh-token old-tokens)
+        tokens (-> :auth/tokens s/gen gen/generate)
+        handler (partial token-refresh-handler
+                         (:tenant config)
+                         refresh-token
+                         tokens)]
+    (projuctivity.request.core/inject-handler! handler)
+    (t/is (= tokens
+             (sut/refresh-token config refresh-token)))
+    (projuctivity.request.core/inject-handler! nil)))

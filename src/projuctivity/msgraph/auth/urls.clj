@@ -84,7 +84,8 @@
                            (filter (partial not= "offline_access")
                                    (map string/lower-case
                                         scopes)))
-        secret (if (string/blank? client-secret)
+        secret (if (or (nil? client-secret)
+                       (string/blank? client-secret))
                  {}
                  {:client_secret client-secret})
         base-params (merge {:client_id clientid

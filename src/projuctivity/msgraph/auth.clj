@@ -113,6 +113,7 @@
   :args (s/cat :refresh-token string?
                :tenant string?
                :clientid string?
+               :client-secret #(or (nil? %) (string? %))
                :scopes (s/spec :auth/scopes))
   :ret (s/spec :auth/tokens))
 (defn get-tokens-from-refresh-token
