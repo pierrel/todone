@@ -10,7 +10,9 @@
             [projuctivity.cache.api :as cache-api]
             [projuctivity.cache.file]
             [clojure.spec.alpha :as s]
-            [projuctivity.msgraph.auth.urls :as urls])
+            [projuctivity.msgraph.auth.urls :as urls]
+            [projuctivity.spec :as lspec]
+            [clojure.spec.gen.alpha :as gen])
   (:import [projuctivity.cache.file EDNFileCache]
            [projuctivity.request.core JSONService]))
 
@@ -23,9 +25,10 @@
                                      :auth/keystorepass
                                      :auth/ssl-keystore
                                      :auth/scopes]))
-
-(s/def :auth/token :projuctivity.config/non-empty-string)
-(s/def :auth/refresh-token :projuctivity.config/non-empty-string)
+(s/def :auth/token
+  (s/with-gen lspec/non-empty-string?
+    #(lspec/gen-char-len gen/char-ascii 20 40)))
+(s/def :auth/refresh-token :auth/token)
 (s/def :auth/tokens (s/keys :req-un [:auth/token :auth/refresh-token]))
 
 (def default-cache (EDNFileCache. ".msgraph-cache.edn"))

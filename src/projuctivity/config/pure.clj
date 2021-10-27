@@ -1,37 +1,30 @@
 (ns projuctivity.config.pure
   (:require [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as gen]))
+            [clojure.spec.gen.alpha :as gen]
+            [projuctivity.spec :as lspec]))
 
 ;; TODO probably move this somewhere more central. There are a bunch of places that should use the same spec or do make use of these.
-(defn non-empty-string? [s]
-  (and (string? s) (not= s "")))
-(s/def :projuctivity.config/non-empty-string
-  (s/with-gen non-empty-string?
-    (fn []
-      (gen/such-that #(and (non-empty-string? %)
-                           (< 6 (.length %)))
-                     (gen/string-alphanumeric)))))
-(s/def :projuctivity.config/non-empty-ascii-string
-  (s/with-gen non-empty-string?
-    (fn []
-      (gen/such-that #(and (non-empty-string? %)
-                           (< 6 (.length %)))
-                     (gen/string-ascii)))))
-(s/def :projuctivity.config/clientid :projuctivity.config/non-empty-string)
-(s/def :projuctivity.config/client-secret :projuctivity.config/non-empty-string)
-(s/def :projuctivity.config/tenant :projuctivity.config/non-empty-string)
+(s/def :projuctivity.config/clientid
+  (s/with-gen lspec/non-empty-string?
+    #(lspec/gen-char-len gen/char-ascii 1 10)))
+(s/def :projuctivity.config/client-secret
+  (s/with-gen lspec/non-empty-string?
+    #(lspec/gen-char-len gen/char-ascii 1 10)))
+(s/def :projuctivity.config/tenant
+  (s/with-gen lspec/non-empty-string?
+    #(lspec/gen-char-len gen/char-alpha 3 10)))
 (s/def :projuctivity.config/service #{:calendar :tasks})
 (s/def :projuctivity.config/services (s/coll-of :projuctivity.config/service
                                                 :kind vector?
                                                 :distinct true))
 (s/def :projuctivity.config/keystorepass
-  :projuctivity.config/non-empty-ascii-string)
+  (s/with-gen lspec/non-empty-string?
+    #(lspec/gen-char-len gen/char-alpha 6 10)))
 (s/def :projuctivity.config/ssl-keystore
-  (s/with-gen non-empty-string?
+  (s/with-gen lspec/non-empty-string?
     (fn []
       (gen/fmap #(format "%s.jks" %)
-                (gen/such-that #(not= % "")
-                               (gen/string-alphanumeric))))))
+                (lspec/gen-char-len gen/char-alpha 4 10)))))
 (s/def :projuctivity.config/server (s/keys :req-un
                                            [:projuctivity.config/keystorepass
                                             :projuctivity.config/ssl-keystore]))
