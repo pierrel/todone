@@ -39,9 +39,10 @@
                    :projuctivity.config/msgraph]))
 
 (s/fdef service-part
-  :args (s/cat :part keyword?
+  :args (s/cat :part :projuctivity.config/service
                :config :projuctivity.config/config)
-  :ret (s/tuple keyword? :projuctivity.config/config))
+  :ret (s/nilable (s/tuple :projuctivity.config/service
+                           :projuctivity.config/service-config)))
 (defn service-part
   "Returns the specified service-specific `part` of the `config`
   including the service provider."
