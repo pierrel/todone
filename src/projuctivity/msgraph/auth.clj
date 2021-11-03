@@ -30,6 +30,9 @@
     #(lspec/gen-char-len gen/char-ascii 20 40)))
 (s/def :auth/refresh-token :auth/token)
 (s/def :auth/tokens (s/keys :req-un [:auth/token :auth/refresh-token]))
+(s/def :auth/code
+  (s/with-gen lspec/non-empty-string?
+    #(lspec/gen-char-len gen/char-ascii 10 20)))
 
 (def default-cache (EDNFileCache. ".msgraph-cache.edn"))
 (def service (JSONService. "https://login.microsoftonline.com"))
@@ -136,7 +139,7 @@
 (s/fdef get-code
   :args (s/cat :config (s/spec :auth/config)
                :scopes (s/spec :auth/scopes))
-  :ret string?)
+  :ret :auth/code)
 (defn get-code [config scopes]
   (println (format "Running server to request credentials.\nPlease head over to %s" urls/auth-url))
   (let [{:keys [clientid
@@ -170,7 +173,7 @@
   :args (s/alt :unary (s/cat :config (s/spec :auth/config))
                :binary (s/cat :config (s/spec :auth/config)
                               :cache (s/spec :projuctivity.cache.api/cache)))
-  :ret (s/spec :auth/tokens))
+  :ret :auth/tokens)
 (defn get-tokens
   ([config cache]
    (let [{:keys [clientid
