@@ -13,10 +13,12 @@
 (s/def :projuctivity.config/tenant
   (s/with-gen lspec/non-empty-string?
     #(lspec/gen-char-len gen/char-alpha 3 10)))
+(s/def :projuctivity.config/service-provider #{:msgraph})
 (s/def :projuctivity.config/service #{:calendar :tasks})
 (s/def :projuctivity.config/services (s/coll-of :projuctivity.config/service
                                                 :kind vector?
-                                                :distinct true))
+                                                :distinct true
+                                                :into []))
 (s/def :projuctivity.config/keystorepass
   (s/with-gen lspec/non-empty-string?
     #(lspec/gen-char-len gen/char-alpha 6 10)))
@@ -41,7 +43,7 @@
 (s/fdef service-part
   :args (s/cat :part :projuctivity.config/service
                :config :projuctivity.config/config)
-  :ret (s/nilable (s/tuple :projuctivity.config/service
+  :ret (s/nilable (s/tuple :projuctivity.config/service-provider
                            :projuctivity.config/service-config)))
 (defn service-part
   "Returns the specified service-specific `part` of the `config`
