@@ -40,11 +40,14 @@
   (s/keys :req-un [:projuctivity.config/server
                    :projuctivity.config/msgraph]))
 
+(s/def :projuctivity.config/service-part-ret
+       (s/nilable (s/tuple :projuctivity.config/service-provider
+                           :projuctivity.config/service-config)))
+
 (s/fdef service-part
   :args (s/cat :part :projuctivity.config/service
                :config :projuctivity.config/config)
-  :ret (s/nilable (s/tuple :projuctivity.config/service-provider
-                           :projuctivity.config/service-config)))
+  :ret :projuctivity.config/service-part-ret)
 (defn service-part
   "Returns the specified service-specific `part` of the `config`
   including the service provider."

@@ -8,9 +8,15 @@
   :projuctivity.config/multiarity-config-input
   (s/alt :nullary (s/cat)
          :unary (s/cat :config :projuctivity.config/config)))
+(s/def ::multiarity-config-file-input
+       (s/alt :nullary (s/cat)
+              :unary (s/cat :config-filename string?)))
 
 (def filename ".config.edn")
 
+(s/fdef load-config
+        :args ::multiarity-config-file-input
+        :ret ::service-config)
 (defn load-config
   ([config-filename]
    (utils/load-edn config-filename))
@@ -30,7 +36,7 @@
 
 (s/fdef calendar-config
   :args :projuctivity.config/multiarity-config-input
-  :ret (s/tuple keyword? :projuctivity.config/service-config))
+  :ret ::service-part-ret)
 (defn calendar-config
   "Returns the calendar service part of the config, including the service provider."
   ([config]
@@ -40,9 +46,9 @@
 
 (s/fdef tasks-config
   :args :projuctivity.config/multiarity-config-input
-  :ret (s/tuple keyword? :projuctivity.config/service-config))
+  :ret ::service-part-ret)
 (defn tasks-config
-  "Returns the tasks service part of the config, inclufing the service provider."
+  "Returns the tasks service part of the config, including the service provider."
   ([config]
    (service-part :tasks config))
   ([]
