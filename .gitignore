@@ -2,3 +2,5 @@
 sqlite.db
 .nrepl-port
 .calva
+.clj-kondo
+.lsp
