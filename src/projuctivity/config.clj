@@ -15,8 +15,8 @@
 (def filename ".config.edn")
 
 (s/fdef load-config
-        :args ::multiarity-config-file-input
-        :ret ::service-config)
+  :args ::multiarity-config-file-input
+  :ret ::config)
 (defn load-config
   ([config-filename]
    (utils/load-edn config-filename))
