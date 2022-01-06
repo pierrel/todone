@@ -41,8 +41,9 @@
                    :projuctivity.config/msgraph]))
 
 (s/def :projuctivity.config/service-part-ret
-       (s/nilable (s/tuple :projuctivity.config/service-provider
-                           :projuctivity.config/service-config)))
+  (s/nilable
+   (s/tuple :projuctivity.config/service-provider
+             :projuctivity.config/service-config)))
 
 (s/fdef service-part
   :args (s/cat :part :projuctivity.config/service

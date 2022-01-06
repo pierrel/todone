@@ -5,13 +5,15 @@
             [projuctivity.cache.file]
             [projuctivity.cache.api :as cache-api]
             [clojure.spec.alpha :as s]
+            [projuctivity.config :as config]
             [clojure.spec.gen.alpha :as gen])
   (:import [projuctivity.cache.file EDNFileCache]))
 
 ;; THIS IS IMPORTANT
 (stest/instrument)
-(stest/instrument `projuctivity.config/load-config 
-                  {:stub #{`projuctivity.config/load-config}})
+(stest/instrument
+ `projuctivity.config/load-config
+ {:stub #{`projuctivity.config/load-config}})
 
 (defn genit [k]
   (-> k s/gen gen/generate))
