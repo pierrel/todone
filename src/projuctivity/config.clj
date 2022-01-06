@@ -36,7 +36,7 @@
 
 (s/fdef calendar-config
   :args :projuctivity.config/multiarity-config-input
-  :ret ::service-part-ret)
+  :ret :projuctivity.config/service-part-ret)
 (defn calendar-config
   "Returns the calendar service part of the config, including the service provider."
   ([config]
@@ -46,7 +46,7 @@
 
 (s/fdef tasks-config
   :args :projuctivity.config/multiarity-config-input
-  :ret ::service-part-ret)
+  :ret :projuctivity.config/service-part-ret)
 (defn tasks-config
   "Returns the tasks service part of the config, including the service provider."
   ([config]
