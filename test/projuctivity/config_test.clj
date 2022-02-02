@@ -2,13 +2,9 @@
   (:use [helper])
   (:require [projuctivity.config :as sut]
             [projuctivity.config.pure :as pure]
+            [helper :as helper]
             [clojure.test :as t]
             [clojure.spec.test.alpha :as spectest]))
-
-(def instrumented ['pure/service-part
-                   'sut/server-config
-                   'sut/calendar-config
-                   'sut/tasks-config])
 
 (def example-config
   {:msgraph {:clientid "comething"
@@ -18,8 +14,9 @@
             :ssl-keystore "keystore.jks"}})
 
 (t/deftest spec-check
-  (let [results (spectest/summarize-results
-                 (spectest/check instrumented))]))
+  (helper/check-and-test-specs
+   'projuctivity.config
+   :to-stub #{`projuctivity.config/load-config}))
 
 (t/deftest service-part
   (t/is (= [:msgraph (:msgraph example-config)]
