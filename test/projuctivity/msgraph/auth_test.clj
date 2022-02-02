@@ -1,4 +1,5 @@
 (ns projuctivity.msgraph.auth-test
+  "Mainly tests the ms auth flow. These tests may fail if they're executed by non-su."
   (:require [projuctivity.msgraph.auth :as sut]
             [projuctivity.msgraph.auth.urls :as urls]
             [clj-http.client :as http]
