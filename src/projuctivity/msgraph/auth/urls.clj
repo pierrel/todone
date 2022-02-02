@@ -7,34 +7,14 @@
 
 (s/def :auth/scopes (s/coll-of string?))
 (s/def :projuctivity.msgraph.auth.urls/auth-url-args
-  (s/cat :clientid string?
-         :tenant string?
+  (s/cat :clientid :auth/clientid
+         :redirect-uri :auth/redirect-uri
+         :tenant :auth/tenant
          :scopes (s/spec :auth/scopes)))
 
-(def redirect-path "/token")
-(def auth-path "/auth")
-(def port 3000)
-(def on-device-hostname
-  (.getHostName (InetAddress/getLocalHost)))
-
-(defn is-codespaces? [hostname]
-  (-> (re-matches #"^codespaces.*" hostname) nil? not))
-
-(defn codespace-url []
-  (format "%s-%s.githubpreview.dev"
-          (get (System/getenv) "CODESPACE_NAME")
-          (str port)))
-
-(defn public-hostname []
-  (if (is-codespaces? on-device-hostname)
-    (codespace-url)
-    on-device-hostname))
-
-(defn base-url []
-  (format "https://%s" (public-hostname)))
-
-(def redirect-url (format "%s%s" (base-url) redirect-path))
-(def auth-url (format "%s%s" (base-url) auth-path))
+(defn base-uri [redirect-uri]
+   (let [uri (java.net.URI. redirect-uri)]))
+(defn redirect-path [redirect-uri])
 
 (s/fdef ms-auth-endpoint
   :args (s/cat :tenant string?)
@@ -45,14 +25,17 @@
           tenant))
 
 (s/fdef query-string
-  :args (s/cat :clientid string? :scopes (s/spec :auth/scopes))
+  :args (s/cat :clientid string?
+               :redirect-uri (s/or :defined string?
+                               :undefined nil?)
+               :scopes (s/spec :auth/scopes))
   :ret string?)
 (defn query-string
-  [clientid scopes]
+  [clientid redirect-uri scopes]
   (let [params {:response_mode "query"
                 :response_type "code"
                 :client_id clientid
-                :redirect_uri redirect-url
+                :redirect_uri (redirect-url redirect-uri)
                 :scope (string/join " "
                                     (map name scopes))}]
     (string/join "&"
@@ -65,19 +48,20 @@
 (s/fdef ms-auth-url
   :args :projuctivity.msgraph.auth.urls/auth-url-args
   :ret string?)
-(defn ms-auth-url [clientid tenant scopes]
+(defn ms-auth-url [clientid redirect-uri tenant scopes]
   (format "%s?%s"
           (ms-auth-endpoint tenant)
-          (query-string clientid scopes)))
+          (query-string clientid redirect-uri scopes)))
 
 (s/fdef test-auth-url
   :args :projuctivity.msgraph.auth.urls/auth-url-args
   :ret string?)
-(defn test-auth-url [clientid tenant scopes]
+(defn test-auth-url [clientid _ _ scopes]
   (format "http://%s:3001?%s"
           (public-hostname)
           (query-string clientid scopes)))
-(defn token-request-params [code tenant clientid client-secret scopes refresh?]
+
+(defn token-request-params [code tenant clientid client-secret scopes refresh? server-config]
   (let [url (format "/%s/oauth2/v2.0/token"
                     tenant)
         scope (string/join " "
@@ -90,7 +74,7 @@
                  {:client_secret client-secret})
         base-params (merge {:client_id clientid
                             :scope scope
-                            :redirect_uri redirect-url}
+                            :redirect_uri (redirect-url server=config)}
                            secret)]
     {:url url
      :params (merge base-params

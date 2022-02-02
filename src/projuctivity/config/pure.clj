@@ -35,11 +35,13 @@
 (s/def :projuctivity.config/server (s/keys :req-un
                                            [:projuctivity.config/keystorepass
                                             :projuctivity.config/ssl-keystore]))
+(s/def :projuctivity.config/redirect-uri :projuctivity.config/non-empty-ascii-string)
 (s/def :projuctivity.config/msgraph
   (s/keys :req-un [:projuctivity.config/clientid
                    :projuctivity.config/tenant
                    :projuctivity.config/services]
-          :opt-un [:projuctivity.config/client-secret]))
+          :opt-un [:projuctivity.config/client-secret
+                   :projuctivity.config/redirect-uri]))
 (s/def :projuctivity.config/service-config :projuctivity.config/msgraph)
 (s/def :projuctivity.config/config
   (s/keys :req-un [:projuctivity.config/server

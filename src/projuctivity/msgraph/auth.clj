@@ -18,11 +18,13 @@
 (s/def :auth/tenant :projuctivity.config/tenant)
 (s/def :auth/keystorepass :projuctivity.config/keystorepass)
 (s/def :auth/ssl-keystore :projuctivity.config/ssl-keystore)
+(s/def :auth/redirect-uri :projuctivity.config/redirect-uri)
 (s/def :auth/config (s/keys :req-un [:auth/clientid
                                      :auth/tenant
-                                     :auth/keystorepass
+                                     :auth/scopes]
+                            :opt-un [:auth/keystorepass
                                      :auth/ssl-keystore
-                                     :auth/scopes]))
+                                     :auth/redirect-uri]))
 
 (s/def :auth/token :projuctivity.config/non-empty-string)
 (s/def :auth/refresh-token :projuctivity.config/non-empty-string)
@@ -47,7 +49,7 @@
 (defn- carry-code [channel code]
   (async/go (async/>! channel code)))
 
-(defn handler [clientid tenant scopes f request]
+(defn handler [clientid redirect-uri tenant scopes f request]
   (try
     (condp re-matches (:uri request)
       #"/token(|/)"
@@ -76,8 +78,8 @@
             dest (apply (if (= (get query "test")
                                "true") ;; TODO make sure this works without test
                           urls/test-auth-url
-                          urls/ms-auth-url )
-                        [clientid tenant scopes])]
+                          urls/ms-auth-url)
+                        [clientid redirect-uri tenant scopes])]
         (resp/redirect dest))
 
       ;; default
@@ -139,27 +141,29 @@
   (let [{:keys [clientid
                 tenant
                 ssl-keystore
-                keystorepass]} config
-        all-scopes             (conj scopes "offline_access")
-        c                      (async/chan)
-        the-handler            (-> (partial handler
-                                            clientid
-                                            tenant
-                                            all-scopes
-                                            (partial carry-code c))
-                                   ssl/wrap-hsts
-                                   ssl/wrap-ssl-redirect
-                                   params/wrap-params)
-        opts                   {:port          3000
-                                :ssl?          true
-                                :keystore      ssl-keystore
-                                :key-password  keystorepass
-                                :keystore-type (if (re-matches #".*\.p12$"
-                                                               ssl-keystore)
-                                                 "pkcs12"
-                                                 "jks")
-                                :join?         false}
-        s                      (server/run-jetty the-handler opts)]
+                keystorepass
+                redirect-uri]} config
+        all-scopes  (conj scopes "offline_access")
+        c           (async/chan)
+        the-handler (-> (partial handler
+                                 clientid
+                                 tenant
+                                 all-scopes
+                                 (partial carry-code c))
+                        params/wrap-params)
+        base-opts   {:port 3000
+                     :join? false}
+        opts        (merge base-opts
+                           (if ssl-keystore
+                             {:ssl?          true
+                              :keystore      ssl-keystore
+                              :key-password  keystorepass
+                              :keystore-type (if (re-matches #".*\.p12$"
+                                                             ssl-keystore)
+                                               "pkcs12"
+                                               "jks")}
+                             {}))
+        s           (server/run-jettytty the-handler opts)]
     (reset! server-debug s)
     (code-from-channel c s)))
 

@@ -9,6 +9,9 @@
 (stest/instrument)
 
 (comment
+(let [uri (java.net.URI. "https://larochelle.com")]
+  (.getHost uri))
+
   ;; To see the config
   (projuctivity.config/calendar-config)
 
