@@ -1,4 +1,3 @@
 #!/bin/bash
 
-#clojure -Adev -m run-tests
 clojure -X:test
